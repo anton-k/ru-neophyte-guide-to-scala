@@ -133,9 +133,6 @@ val moreContent: Either[Iterator[String], Source] =
 узнать среднее число строк для двух моих статей. Нам ведь давно хотелось узнать об этом, не так ли?
 Мы можем решить эту сложнейшую задачу, примерно так:
 
-
-I’m putting very high requirements on your suspension of disbelief now, coming up with a completely contrived example. Let’s say we want to calculate the average number of lines of two of my articles. You’ve always wanted to do that, right? Here’s how we could solve this challenging problem:
-
 ~~~
 val part5 = new URL("http://t.co/UR1aalX4")
 val part6 = new URL("http://t.co/6wlKwTmu")
@@ -162,10 +159,11 @@ val content = getContent(part5).right.flatMap(a =>
 
 #### For-генераторы
 
+Скорее всего, `for`-генераторы уже успели вам понравиться. Они предоставляют набор простых средств
+для работы с различными типами. Также мы можем использовать `for`-генераторами для проекций,
+но, к сожалению, это будет не так элегантно, придётся иметь дело с корявыми костылями. 
 
-By now, you have probably learned to love working with for comprehensions in a consistent way on various different data types. You can do that, too, with projections of Either, but the sad truth is that it’s not quite as nice, and there are things that you won’t be able to do without resorting to ugly workarounds, out of the box.
-
-Let’s rewrite our flatMap example, making use of for comprehensions instead:
+Давайте перепишем наш пример с `flatMap` через генераторы:
 
 ~~~
 def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
@@ -175,9 +173,10 @@ def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
   } yield (source1.getLines().size + source2.getLines().size) / 2
 ~~~
 
-This is not too bad. Note that we have to call right on each Either we use in our generators, of course.
+Не так плохо. Обратите внимание на вызов `right` в каждом из генераторов. 
 
-Now, let’s try to refactor this for comprehension – since the yield expression is a little too involved, we want to extract some parts of it into value definitions inside our for comprehension:
+Теперь немного перепишем это выражение. Поскольку возвращаемый результат слишком
+многословен, давайте определим локальные переменные для его упрощения:
 
 ~~~
 def averageLineCountWontCompile(url1: URL, url2: URL): Either[String, Int] =
@@ -189,7 +188,9 @@ def averageLineCountWontCompile(url1: URL, url2: URL): Either[String, Int] =
   } yield (lines1 + lines2) / 2
 ~~~
 
-This won’t compile! The reason will become clearer if we examine what this for comprehension corresponds to, if you take away the sugar. It translates to something that is similar to the following, albeit much less readable:
+Но это выражение не скомпилируется! Причина станет понятной если мы избавимся от
+синтаксического сахара `for`-генераторов. Исходное выражение превратится в нечто
+менее наглядное:
 
 ~~~
 def averageLineCountDesugaredWontCompile(url1: URL, url2: URL): Either[String, Int] =
@@ -202,9 +203,14 @@ def averageLineCountDesugaredWontCompile(url1: URL, url2: URL): Either[String, I
   }
 ~~~
 
-The problem is that by including a value definition in our for comprehension, a new call to map is introduced automatically – on the result of the previous call to map, which has returned an Either, not a RightProjection. As you know, Either doesn’t define a map method, making the compiler a little bit grumpy.
+Проблема в том, что при определении переменных внутри `for`-генератора появляется
+ещё один промежуточный вызов `map`. Он вызывается на результате предыдущего вызова `map`,
+который вернул `Either`, а не `RightProjection`. Но для `Ether` метод `map` не определён,
+на что и пожаловался компилятор.  
 
-This is where Either shows us its ugly trollface. In this example, the value definitions are not strictly necessary. If they are, you can work around this problem, replacing any value definitions by generators, like this:
+И вот из `Either` показалась корявая усмешка тролля. В этом примере, мы можем обойтись 
+и без локальных переменных. Если они нам действительно нужна, мы можем обойти проблему,
+заменив простые переменые генераторами:
 
 ~~~
 def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
@@ -216,41 +222,59 @@ def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
   } yield (lines1 + lines2) / 2
 ~~~
 
-It’s important to be aware of these design flaws. They don’t make Either unusable, but can lead to serious headaches if you don’t have a clue what’s going on.
+Об этой проблеме необходимо помнить.  Она не ставит крест на `Either`, но может доставить
+массу хлопот, если вы не понимаете причину её появления.
 
-#### Other methods
+#### Другие методы
 
-The projection types have some other useful methods:
+На проекциях определены и другие полезные методы:
 
-You can convert your Either instance to an Option by calling toOption on one of its projections. For example, if you have an e of type Either[A, B], e.right.toOption will return an Option[B]. If your Either[A, B] instance is a Right, that Option[B] will be a Some. If it’s a Left, it will be None. The reverse behaviour can be achieved, of course, when calling toOption on the LeftProjection of your Either[A, B]. If you need a sequence of either one value or none, use toSeq instead.
+Мы можем преобразовать `Either` в `Option` вызовом метода `toOption` на одной из проекций.
+К примеру, у нас есть значение `e` типа `Either[A, B]`. Выражение `e.right.toOption` вернёт
+`Option[B]`. Если `Either[A, B]` содержит `Right`, результат окажется `Some`. Если `Left`, то
+мы получим `None`. Аналогично и для `LeftProjection`. Для преобразование в последовательность 
+из одного элемента воспользуйтесь методом `toSeq`.
 
-Folding
+
+Свёртка
 --------------------------------
 
-If you want to transform an Either value regardless of whether it is a Left or a Right, you can do so by means of the fold method that is defined on Either, expecting two transform functions with the same result type, the first one being called if the Either is a Left, the second one if it’s a Right.
+Для преобразования `Either` в независимости от того какую альтернативу оно содержит,
+мы можем воспользоваться методом `fold`, принимающим две функции с одним и тем же 
+типом для результата. Первая функци вызывается, если значение содержит `Left` и вторая
+функция -- в случае `Right`. 
 
-To demonstrate this, let’s combine the two mapping operations we implemented on the LeftProjection and the RightProjection above:
+Рассмотри на примере объединения двух операций, определённых на левой и правой проекции:
 
 ~~~
 val content: Iterator[String] =
   getContent(new URL("http://danielwestheide.com")).fold(Iterator(_), _.getLines())
+
 val moreContent: Iterator[String] =
   getContent(new URL("http://google.com")).fold(Iterator(_), _.getLines())
 ~~~
 
-In this example, we are transforming our Either[String, Source] into an Iterator[String], no matter if it’s a Left or a Right. You could just as well return a new Either again or execute side-effects and return Unit from your two functions. As such, calling fold provides a nice alternative to pattern matching.
+В этом примере мы преобразуем `Either[String, Source]` в `Iterator[String]`, вне зависимости
+от значения `Either`. Также мы могли вернуть из функций `Either` или выполнить побочные эффекты 
+с результатом `Unit` для двух функций. Метод `fold` является отличной альтернативой сопоставлению 
+с образцом.
 
-When to use Either
+
+Когда использовать Either
 ---------------------------------
 
+Теперь, когда мы узнали как использовать `Either`, давайте рассмотрим несколько частных
+случаев его применения.
 
-Now that you have seen how to work with Either values and what you have to take care of, let’s move on to some specific use cases.
+### Обработка исключений
 
-### Error handling
+Мы можем пользоваться `Either` для обработки исключений вместо `Try`. У `Either` есть
+одно небольшое приемущество в том, что мы можем определить тип исключений более точно,
+в то время как в `Try` всё время используется самый общий тип `Throwable`.
+Поэтому `Either` хорошо применять, когда тип исключений заранее известен.
 
-You can use Either for exception handling very much like Try. Either has one advantage over Try: you can have more specific error types at compile time, while Try uses Throwable all the time. This means that Either can be a good choice for expected errors.
-
-You’d have to implement a method like this, delegating to the very useful Exception object from the scala.util.control package:
+Необходимо определить специальный метод, воспользовавшись очень полезным объектом
+`exception` из пакета `scala.util.control`:
 
 ~~~
 import scala.util.control.Exception.catching
@@ -258,9 +282,11 @@ def handling[Ex <: Throwable, T](exType: Class[Ex])(block: => T): Either[Ex, T] 
   catching(exType).either(block).asInstanceOf[Either[Ex, T]]
 ~~~
 
-The reason you might want to do that is because while the methods provided by scala.util.Exception allow you to catch only certain types of exceptions, the resulting compile-time error type is always Throwable.
+Нам нужен этот метод из-за того, что несмотря на то, что несмотря на то, что методы, определённые в `scala.util.Exception`,
+позволяют нам обрабатывать специфические типы искдючений, результирующий на этапе компиляции 
+тип исключения всегда будет `Throwable`.
 
-With this method at hand, you can pass along expected exceptions in an Either:
+С помощью этого метода мы можем указывать на тип исключения в `Either`:
 
 ~~~
 import java.net.MalformedURLException
@@ -268,26 +294,36 @@ def parseURL(url: String): Either[MalformedURLException, URL] =
   handling(classOf[MalformedURLException])(new URL(url))
 ~~~
 
-You will have other expected error conditions, and not all of them result in third-party code throwing an exception you need to handle, as in the example above. In these cases, there is really no need to throw an exception yourself, only to catch it and wrap it in a Left. Instead, simply define your own error type, preferably as a case class, and return a Left wrapping an instance of that error type in your expected error condition occurs.
+Также наши исключения не обязательно могут быть вызваны отваливающимися функциями из чужих библиотек,
+как в примере выше. В тех примерах мы лишь перехватывали исключения, которые случались 
+в библиотечных функциях, и оборачивали их в `Left`. Вместо этого мы можем определить свой тип ошибок,
+предпочтительно в виде `case`-класса. После чего мы можем возвращать его из функции, поместив в 
+конструктор `Left`, при выполнении некоторого условия. 
 
-Here is an example:
+Приведём пример:
 
 ~~~
 case class Customer(age: Int)
+
 class Cigarettes
+
 case class UnderAgeFailure(age: Int, required: Int)
+
 def buyCigarettes(customer: Customer): Either[UnderAgeFailure, Cigarettes] =
   if (customer.age < 16) Left(UnderAgeFailure(customer.age, 16))
   else Right(new Cigarettes)
 ~~~
 
-You should avoid using Either for wrapping unexpected exceptions. Try does that better, without all the flaws you have to deal with when working with Either.
+Для обработки неожиданных исключений лучше исполбзовать `Try`. Он лишён всех недостатков `Either`.
 
-### Processing collections
 
-Generally, Either is a pretty good fit if you want to process a collection, where for some items in that collection, this might result in a condition that is problematic, but should not directly result in an exception, which would result in aborting the processing of the rest of the collection.
+### Обработка коллекций
 
-Let’s assume that for our industry-standard web censorship system, we are using some kind of black list:
+Обычно, `Either` хорошо подходит для работы с коллекциями, если в какой-то момент
+что-то может пойти не так, но при этом не возникает ошибка, исключающая дальнейшую
+обработку элементов коллекции.  
+
+Предположим, что для нашего интернет-цензора определён чёрный список:
 
 ~~~
 type Citizen = String
@@ -301,11 +337,15 @@ val blacklist = List(
 )
 ~~~
 
-A BlackListedResource represents the URL of a black-listed web page plus the citizens who have tried to visit that page.
+`BlackListedResource` представляет набор запрещённых адресов с указанием лиц, пытавшихся
+по ним обратиться. 
 
-Now we want to process this black list, where our main purpose is to identify problematic citizens, i.e. those that have tried to visit blocked pages. At the same time, we want to identify suspicous web pages – if not a single citizen has tried to visit a black-listed page, we must assume that our subjects are bypassing our filter somehow, and we need to investigate that.
+Теперь мы хотим найти проблемных пользователей, то есть тех, что пытались попасть 
+на запрещённые страницы. В то же время мы хотим найти подозрительные страницы -- 
+те страницы, в которые никто не обращался. Мы предполагаем, что пользователи
+могут обойти наш фильтр и нам нужно разобраться с этой проблемой:
 
-Here is how we can process our black list:
+Мы можем обработать наш список следующим образом: 
 
 ~~~
 val checkedBlacklist: List[Either[URL, Set[Citizen]]] =
@@ -314,26 +354,26 @@ val checkedBlacklist: List[Either[URL, Set[Citizen]]] =
     else Right(resource.visitors))
 ~~~
 
-We have created a sequence of Either values, with the Left instances representing suspicious URLs and the Right ones containing sets of problem citizens. This makes it almost a breeze to identify both our problem citizens and our suspicious web pages:
+Мы создали последовательность значений `Either`. Левые альтернативы представляют подозрительные адреса 
+и правые -- множества проблемных пользователей. Теперь мы можем совсем просто установить и проблемных пользователей
+и подозрительные страницы: 
 
 ~~~
 val suspiciousResources = checkedBlacklist.flatMap(_.left.toOption)
 val problemCitizens = checkedBlacklist.flatMap(_.right.toOption).flatten.toSet
 ~~~
 
-These more general use cases beyond exception handling are where Either really shines.
+Мы видим, что `Either` отлично српавляется с более общими задачами, еоторые
+выходят за рамки обработки исключений.
 
-Summary
+Итоги
 -------------------------------------------
 
-You have learned how to make use of Either, what its pitfalls are, and when to put it to use in your code. It’s a type that is not without flaws, and whether you want to have to deal with them and incorporate it in your own code is ultimately up to you.
+Мы узнали как и где пользовать `Either`, а также о его недостатках. И `Either` совсем
+не лишён недостатков, но итоговое решение, нужен ли этот тип в Вашем коде или нет, всегда
+остаётся за Вами.
 
-In practice, you will notice that, now that we have Try at our hands, there won’t be terribly many use cases for it. Nevertheless, it’s good to know about it, both for those situations where it will be your perfect tool and to understand pre-2.10 Scala code you come across where it’s used for error handling.
-
-
-
-
-
-
-
-
+На практике, благодаря `Try`, для `Either` остаётся не так много работы. Но всё-таки
+нам важно знать и об этом типе. Могут случиться и ситуации, в которых он станет вашим 
+незаменимым помошником, а также это полезно для понимания кода Scala для версий ниже 2.10,
+там где он использовался для обработки исключений.
