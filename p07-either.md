@@ -1,32 +1,49 @@
-Part 7: The Either Type
+Глава 7: Тип Either
 ================================================
 
-In the previous article, I discussed functional error handling using Try, which was introduced in Scala 2.10. I also mentioned the existence of another, somewhat similar type called Either, which is the subject of this article. You will learn how to use it, when to use it, and what its particular pitfalls are.
+В предыдущей главе мы узнали как обрабатываются исключения в функциональном стиле.
+Мы узнали о тип `Try`. Он появился в Scala с версии 2.10. Также я упомнул и о типе `Either`.
+В этой главе мы остановимся на нём по-подробнее. Мы узнаем как и где он используется и о некоторых
+неприятных особенностях типа `Either`. 
 
-Speaking of which, at least at the time of this writing, Either has some serious design flaws you need to be aware of, so much so that one might argue about whether to use it at all. So why then should you learn about Either at all?
+На данный момент в типе `Either` есть несколько серьёзных недостатков, о которых стоит знать. 
+Они настолько серьёзны, что необходимость использования `Either` может вызывать сомнения. 
+А нужен ли он нам?
 
-For one, people will not all migrate their existing code bases to use Try for dealing with exceptions, so it is good to be able to understand the intricacies of this type, too.
+Во первых, до появления `Try` для обработки исключений использовался тип `Either` и не
+все разработчики перешли на новый способ. Поэтому нам стоит разобраться в тонкостях и этого типа.
 
-Moreover, Try is not really an all-out replacement for Either, only for one particular usage of it, namely handling exceptions in a functional way. As it stands, Try and Either really complement each other, each covering different use cases. And, as flawed as Either may be, in certain situations it will still be a very good fit.
+Кроме того, `Try` не равносилен `Either`. `Try` используется только для обработки исключений
+в функциональном стиле. На прктике `Try` и `Either` дополняют друг друга. И несмотря на все
+недостатки `Either`, есть проблемы, с которыми он справляется очень хорошо.
 
-The semantics
+Семантика
 -----------------------------------------
 
-Like Option and Try, Either is a container type. Unlike the aforementioned types, it takes not only one, but two type parameters: An Either[A, B] instance can contain either an instance of A, or an instance of B. This is different from a Tuple2[A, B], which contains both an A and a B instance.
+Как `Try` и `Option` тип `Either` является контейнером. Только он принимает два параметра, а не один: 
+значение типа `Either[A, B]` может содержать значение типа `A` или значение типа `B`. В этом отличие от `Tuple[A, B]`,
+который одновременно содержит два значения,  типов `A` и `B`.
 
-Either has exactly two sub types, Left and Right. If an Either[A, B] object contains an instance of A, then the Either is a Left. Otherwise it contains an instance of B and is a Right.
+От `Either` наследуют всего два класса: `Left` и `Right`. Если значение `Either[A, B]` содержит 
+значение типа `A`,  тогда `Either` содержит `Left`, иначе оно содержит значение типа `B` 
+обёрнутое в класс `Right`.
 
-There is nothing in the semantics of this type that specifies one or the other sub type to represent an error or a success, respectively. In fact, Either is a general-purpose type for use whenever you need to deal with situations where the result can be of one of two possible types. Nevertheless, error handling is a popular use case for it, and by convention, when using it that way, the Left represents the error case, whereas the Right contains the success value.
+В семантике типа ничто не указывает на то, что один или другой тип представляет ошибку
+или успешное выполнение. На самом деле, `Either` обозначает тип общего назначения, 
+представляющий результат, в котором для значений есть две возможные альтернативы. 
+Но несмотря на это, чаще всего он используется для обработки исключений, и по соглашению
+`Left` отвечает за ошибки/исключения, а `Right` -- за успешно вычисленное значение.
 
-
-Creating an Either
+Создание значения типа `Either`
 ------------------------------------------
 
-Creating an instance of Either is trivial. Both Left and Right are case classes, so if we want to implement a rock-solid internet censorship feature, we can just do the following:
+Значения типа `Either` создаются очень просто. И `Left` и `Right` являются `case`-классами. 
+Так если мы хотим реализовать непробиваемую систему интернет-цензуры, мы можем сделать это так:
 
 ~~~
 import scala.io.Source
 import java.net.URL
+
 def getContent(url: URL): Either[String, Source] =
   if (url.getHost.contains("google"))
     Left("Requested URL is blocked for the good of the people!")
@@ -34,12 +51,16 @@ def getContent(url: URL): Either[String, Source] =
     Right(Source.fromURL(url))
 ~~~
 
-Now, if we call getContent(new URL("http://danielwestheide.com")), we will get a scala.io.Source wrapped in a Right. If we pass in new URL("https://plus.google.com"), the return value will be a Left containing a String.
+Теперь, если мы вызовим `getContent(new URL("http://danielwestheide.com"))`, то мы получим
+`scala.io.Source` обёрнутый в `Right`. Если мы попробуем обратиться по `new URL("https://plus.google.com")`,
+результат будет содержать `Left` со строкой.
 
-Working with Either values
+Использование `Either`
 ----------------------------------------------
 
-Some of the very basic stuff works just as you know from Option or Try: You can ask an instance of Either if it isLeft or isRight. You can also do pattern matching on it, which is one of the most familiar and convenient ways of working with objects of this type:
+Некоторые совсем простые вещи работают в `Either` точно так же как и в `Try`. У нас есть методы `isLeft`
+и `isRight`. Также мы можем выполнять сопоставление с образцом, этот способ работы с типом `Either`
+наиболее удобен:
 
 ~~~
 getContent(new URL("http://google.com")) match {
@@ -48,47 +69,70 @@ getContent(new URL("http://google.com")) match {
 }
 ~~~
 
-### Projections
+### Проекции
 
-You cannot, at least not directly, use an Either instance like a collection, the way you are familiar with from Option and Try. This is because Either is designed to be unbiased.
+Мы не можем работать с `Either` как с коллекциями, также как и в `Option` или `Try`. 
+Это решение вызвано тем, что `Either` не должно отдавать предпочтение одной или другой альтернативе.
 
-Try is success-biased: it offers you map, flatMap and other methods that all work under the assumption that the Try is a Success, and if that’s not the case, they effectively don’t do anything, returning the Failure as-is.
+В `Try` мы концентрируемся на типе результата, успешно вычисленного значения, для него определены
+`map`, `flatMap` и другие методы. Все они предполагают, что `Try` содержит `Success`, и если это
+не так, они ничего не делают, передавая далее `Failure`. 
 
-The fact that Either is unbiased means that you first have to choose whether you want to work under the assumption that it is a Left or a Right. By calling left or right on an Either value, you get a LeftProjection or RightProjection, respectively, which are basically left- or right-biased wrappers for the Either.
+Поскольку в `Either` альтернативы равнозначны, мы сначаал должны определиться с какой веткой 
+мы хотим работать, вызовом методов `left` или `right` на значении типа `Either`. После этого
+мы получим одну из проекций `LeftProjection` или `RightProjection`, которые концентрируются на 
+левой и правой альтернативе соответственно. 
 
-#### Mapping
+#### Преобразование
 
-Once you have a projection, you can call map on it:
+После того как у нас есть проекция, мы можем преобразовать её элемент:
 
 ~~~
 val content: Either[String, Iterator[String]] =
   getContent(new URL("http://danielwestheide.com")).right.map(_.getLines())
-// content is a Right containing the lines from the Source returned by getContent
+// content содержит Right со строчками из Source, который был получен с помощью getContent
+
 val moreContent: Either[String, Iterator[String]] =
   getContent(new URL("http://google.com")).right.map(_.getLines)
-// moreContent is a Left, as already returned by getContent
+// moreContent содержит Left, полученный из getContent
 ~~~
 
-Regardless of whether the Either[String, Source] in this example is a Left or a Right, it will be mapped to an Either[String, Iterator[String]]. If it’s called on a Right, the value inside it will be transformed. If it’s a Left, that will be returned unchanged.
+Что бы не содержало значение `Either[String, Source]` в этом примере, `Left` или `Right`, оно будет
+преобразовано в `Either[String, Iterator[String]]`. Если оно содержит `Right`, то значение будет 
+преобразовано, если оно содержит `Left`, значение останется без изменений.
 
-We can do the same with a LeftProjection, of course:
+То же самое мы можем выполнить и для `LeftProjection`:
 
 ~~~
 val content: Either[Iterator[String], Source] =
   getContent(new URL("http://danielwestheide.com")).left.map(Iterator(_))
-// content is the Right containing a Source, as already returned by getContent
+// content содержит Right с Source, в том виде, в котором он был получен из getContent
+
 val moreContent: Either[Iterator[String], Source] =
   getContent(new URL("http://google.com")).left.map(Iterator(_))
-// moreContent is a Left containing the msg returned by getContent in an Iterator
+// moreContent содержит Left с msg, полученым из getContent в Iterator'е
 ~~~
 
-Now, if the Either is a Left, its wrapped value is transformed, whereas a Right would be returned unchanged. Either way, the result is of type Either[Iterator[String], Source].
+Теперь, если `Either` содержит `Left`, результат будет преобразован, а в случае
+`Right` оставден без изменений. И в том и вдругом случае результат значения будет
+`Either[Iterator[String], Source]`
 
-Please note that the map method is defined on the projection types, not on Either, but it does return a value of type Either, not a projection. In this, Either deviates from the other container types you know. The reason for this has to do with Either being unbiased, but as you will see, this can lead to some very unpleasant problems in certain cases. It also means that if you want to chain multiple calls to map, flatMap and the like, you always have to ask for your desired projection again in between.
+Обратите внимание на то, что метод `map` определён на проекциях, а не на самом типе `Either`,
+но он возвращает значение типа `Either`, а не проекции. В этом `Either` уходит от привычной
+аналогии с коллекциями. Так происходит потому, что в `Either` альтернативы должны оставаться
+равнозначными. Но Вы уже наверное догадываетесь о том, какие проблемы могут стоять за этим
+решением. к тому же, если мы хотим вызвать несколько методов `map`, `flatMap` и других методов, 
+нам придётся каждый раз указывать какую проекцию мы хотим использовать. 
 
-#### Flat mapping
+#### Метод `flatMap`
 
-Projections also support flat mapping, avoiding the common problem of creating a convoluted structure of multiple inner and outer Either types that you will end up with if you nest multiple calls to map.
+Для проекций также определён метод `flatMap`, который позволяет избежать проблемы вложенных структур
+при вызове `map`. 
+
+Прошу потерпеть, но сейчас мы рассмотрим очень надуманный пример. Допустим нам хочется
+узнать среднее число строк для двух моих статей. Нам ведь давно хотелось узнать об этом, не так ли?
+Мы можем решить эту сложнейшую задачу, примерно так:
+
 
 I’m putting very high requirements on your suspension of disbelief now, coming up with a completely contrived example. Let’s say we want to calculate the average number of lines of two of my articles. You’ve always wanted to do that, right? Here’s how we could solve this challenging problem:
 
@@ -100,9 +144,12 @@ val content = getContent(part5).right.map(a =>
     (a.getLines().size + b.getLines().size) / 2))
 ~~~
 
-What we’ll end up with is an Either[String, Either[String, Int]]. Now, content being a nested structure of Rights, we could flatten it by calling the joinRight method on it (you also have joinLeft available to flatten a nested structure of Lefts).
+В результате мы получим значение типа `Either[String, Either[String, Int]]`, что содержит вложенный `Either`
+в правой альтернативе. Мы можем избавиться от этой вложенности вызовом метода `joinRight`, также
+определён и метод `joinLeft`. 
 
-However, we can avoid creating this nested structure altogether. If we flatMap on our outer RightProjection, we get a more pleasant result type, unpacking the Right of the inner Either:
+Однако мы можем не создавать вложенную структуру изначально. Если мы вызовем `flatMap` на `RightProjection`, то
+мы полуим более приятный результат. Это приведёт к тому что, мы избавимся от `Right` во внутреннем `Either`. 
 
 ~~~
 val content = getContent(part5).right.flatMap(a =>
@@ -110,9 +157,11 @@ val content = getContent(part5).right.flatMap(a =>
     (a.getLines().size + b.getLines().size) / 2))
 ~~~
 
-Now content is a flat Either[String, Int], which makes it a lot nicer to work with, for example using pattern matching.
+Теперь переменная content имеет тип `Either[String, Int]` и с ней гораздо приятнее работать,
+например, при сопоставлении с образцом. 
 
-#### For comprehensions
+#### For-генераторы
+
 
 By now, you have probably learned to love working with for comprehensions in a consistent way on various different data types. You can do that, too, with projections of Either, but the sad truth is that it’s not quite as nice, and there are things that you won’t be able to do without resorting to ugly workarounds, out of the box.
 
