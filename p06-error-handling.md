@@ -107,25 +107,30 @@ def parseURL(url: String): Try[URL] = Try(new URL(url))
 
 ### Использоваие значений типа `Try`
 
-Working with Try instances is actually very similar to working with Option values, so you won’t see many surprises here.
+Тип `Try` очень похож на тип `Option`, поэтому нас ждёт мало неожиданностей.
 
-You can check if a Try is a success by calling isSuccess on it and then conditionally retrieve the wrapped value by calling get on it. But believe me, there aren’t many situations where you will want to do that.
+Мы можем узнать завершилось ли вычисление успешно вызовом метода `isSuccess` 
+для значения типа `Try` и затем извлечь значеине с помощью `get`. Но, поверьте
+мне на слово, мы будем пользоваться этими методами не так часто.
 
-It’s also possible to use getOrElse to pass in a default value to be returned if the Try is a Failure:
+Также для `Try` определён метод `getOrElse`, который возвращает значение по умолчанию
+в случае возникновения исключения.
 
 ~~~
 val url = parseURL(Console.readLine("URL: ")) getOrElse new URL("http://duckduckgo.com")
 ~~~
 
-If the URL given by the user is malformed, we use the URL of DuckDuckGo as a fallback.
+Если пользователь набрал неверный URL, мы перейдём по адресу поисковика DuckDuckGo.
 
-#### Chaining operations
+#### Цепочки операций
 
-One of the most important characteristics of the Try type is that, like Option, it supports all the higher-order methods you know from other types of collections. As you will see in the examples to follow, this allows you to chain operations on Try values and catch any exceptions that might occur, and all that in a very readable manner.
+Важной особенностью типа `Try` является то, что он, также как и `option`, поддерживает все методы для колекций.
+Совсем скоро мы рассмотрим несколько примеров и Вы убедитесь в наглядности обработки исключений в типе `Try`.  
 
-#### Mapping and flat mapping
+#### Методы map и flatMap
 
-Mapping a Try[A] that is a Success[A] to a Try[B] results in a Success[B]. If it’s a Failure[A], the resulting Try[B] will be a Failure[B], on the other hand, containing the same exception as the Failure[A]:
+Метод `map` отображает `Try[A]` из `Success[A]` в `Success[B]`. Если значение содержит `Failure[A]`, то результат `Try[B]` 
+также  будет содержать `Failure[B]` вместе с тем же исключением, что и в `Failure[A]`.
 
 ~~~
 parseURL("http://danielwestheide.com").map(_.getProtocol)
@@ -134,7 +139,9 @@ parseURL("garbage").map(_.getProtocol)
 // results in Failure(java.net.MalformedURLException: no protocol: garbage)
 ~~~
 
-If you chain multiple map operations, this will result in a nested Try structure, which is usually not what you want. Consider this method that returns an input stream for a given URL:
+Если мы проводим несколько вызовов `map`, на функциях с исключениями, то мы 
+получим вложенные значения типа `Try`, чего хотелось бы избежать. К примеру , посмотрим на метод,
+который возвращает данные для данного URL:
 
 ~~~
 import java.io.InputStream
@@ -143,13 +150,19 @@ def inputStreamForURL(url: String): Try[Try[Try[InputStream]]] = parseURL(url).m
 }
 ~~~
 
-Since the anonymous functions passed to the two map calls each return a Try, the return type is a Try[Try[Try[InputStream]]].
+Поскольку каждая из функций, что переданы в `map`, возвращает `Try`, мы получили на выходе
+тип `Try[Try[Try[InputStream]]]`.
 
-This is where the fact that you can flatMap a Try comes in handy. The flatMap method on a Try[A] expects to be passed a function that receives an A and returns a Try[B]. If our Try[A] instance is already a Failure[A], that failure is returned as a Failure[B], simply passing along the wrapped exception along the chain. If our Try[A] is a Success[A], flatMap unpacks the A value in it and maps it to a Try[B] by passing this value to the mapping function.
+Самое время воспользоваться методом `flatMap`. Метод `flatMap` на значении `Try[A]` принимает функцию,
+которая переводит `A` в `Try[B]`. Если наше значение уже содержит исключение, оно перейдёт в результат
+типа `Failure[B]`, мы пропустим вызов функции. Если же `Try[A]` содержит `Success[A]` метод `flatMap`
+извлечёт значение типа `A`, применит к нему функцию и вернёт значение типа `Try[B]`.
 
-This means that we can basically create a pipeline of operations that require the values carried over in Success instances by chaining an arbitrary number of flatMap calls. Any exceptions that happen along the way are wrapped in a Failure, which means that the end result of the chain of operations is a Failure, too.
+Так мы можем сторить цепочки вызовов функций, которые могут завершиться исключениями. 
+Если где-то среди вызовов случится  исключение, оно будет обёрнуто в `Failure` и именно
+оно и будет возвращено в качестве результата.  
 
-Let’s rewrite the inputStreamForURL method from the previous example, this time resorting to flatMap:
+Давайте перепишем предыдущий пример через `flatMap`:
 
 ~~~
 def inputStreamForURL(url: String): Try[InputStream] = parseURL(url).flatMap { u =>
@@ -157,11 +170,15 @@ def inputStreamForURL(url: String): Try[InputStream] = parseURL(url).flatMap { u
 }
 ~~~
 
-#### Filter and foreach
+#### Filter и foreach
 
-Of course, you can also filter a Try or call foreach on it. Both work exactly as you would except after having learned about Option.
+Также мы можем проводить фильтрацию для `Try` или вызывать метод `foreach`. 
+Эти методы работают точно так же как и в случае `Option`.
 
-The filter method returns a Failure if the Try on which it is called is already a Failure or if the predicate passed to it returns false (in which case the wrapped exception is a NoSuchElementException). If the Try on which it is called is a Success and the predicate returns true, that Succcess instance is returned unchanged:
+Метод `filter` вернёт `Failure`, если значение уже содержит `Failure` или
+если предикат вернёт ложь (тогда на выходе мы получим исключение `NoSuchElementException`). 
+Если значение `Try`, содержит `Success[A]` и предикат вернёт истину, тогда на выходе
+будет то же самое значение:
 
 ~~~
 def parseHttpURL(url: String) = parseURL(url).filter(_.getProtocol == "http")
@@ -169,15 +186,19 @@ parseHttpURL("http://apache.openmirror.de") // results in a Success[URL]
 parseHttpURL("ftp://mirror.netcologne.de/apache.org") // results in a Failure[URL]
 ~~~
 
-The function passed to foreach is executed only if the Try is a Success, which allows you to execute a side-effect. The function passed to foreach is executed exactly once in that case, being passed the value wrapped by the Success:
+Функция, переданная в `foreach`, выполняется только в том случае, если `Try` 
+содержит `Success[A]`. Метод `foreach` извлечёт значение и выполнит все побочные эффекты
+из переданной процедуры. Функция будет вызвана только один раз. 
 
 ~~~
 parseHttpURL("http://danielwestheide.com").foreach(println)
 ~~~
 
-#### For comprehensions
+#### For-генераторы
 
-The support for flatMap, map and filter means that you can also use for comprehensions in order to chain operations on Try instances. Usually, this results in more readable code. To demonstrate this, let’s implement a method that returns the content of a web page with a given URL using for comprehensions.
+Так как для `Try` определены методы `map`, `filter` и `flatMap`, мы можем воспользоваться 
+`for`-генераторами. В большинстве случаев `for`-генераторы делают код гораздо более наглядным.
+К примеру, реализуем метод, возвращающий содержание страницы по данному адресу:
 
 ~~~
 import scala.io.Source
@@ -190,16 +211,27 @@ def getURLContent(url: String): Try[Iterator[String]] =
   } yield source.getLines()
 ~~~
 
-There are three places where things can go wrong, all of them covered by usage of the Try type. First, the already implemented parseURL method returns a Try[URL]. Only if this is a Success[URL], we will try to open a connection and create a new input stream from it. If opening the connection and creating the input stream succeeds, we continue, finally yielding the lines of the web page. Since we effectively chain multiple flatMap calls in this for comprehension, the result type is a flat Try[Iterator[String]].
+Ошибки могут случиться по крайней мере в трёх местах. Тип `Try` используется в каждом из них. 
+Во первых, метод `parseURL` возвращает `Try[URL]`. Мы продолжим вычисления только в случае
+успешного завершения этого метода (`Success[URL]`). Тогда мы попытаемся установить соединение 
+и создать поток данных. Если эти операции завершаться успешно, мы продолжим и наконец вернём
+содержание веб-страницы. Поскольку в этом выражении мы комбинируем несколько вызовов `flatMap` 
+тип итогового значения будет просто `Try[Iterator[String]]`.
 
-Please note that this could be simplified using Source#fromURL and that we fail to close our input stream at the end, both of which are due to my decision to keep the example focussed on getting across the subject matter at hand.
+Обратите внимание на, то что на практике мы могли бы воспользоваться функцией `Source.fromUrl`, 
+также мы забыли закрыть соединение. Я специально опустил эти детали, для того чтобы сосредоточиться
+на особенностях использования `Try`.
 
-Pattern Matching
+Сопоставление с образцом
 -------------------------------------------
 
-At some point in your code, you will often want to know whether a Try instance you have received as the result of some computation represents a success or not and execute different code branches depending on the result. Usually, this is where you will make use of pattern matching. This is easily possible because both Success and Failure are case classes.
+Довольно часто на практике встречаются ситуации, в которых нам явно хочется проверить,
+что же произошло с вычислением. Закончилось ли оно успешно или произошла ошибка.
+Мы можем сделать это с помощью сопоставления с образцом, посокольку и `Success` 
+и `Failure` являются `case`-классами.
 
-We want to render the requested page if it could be retrieved, or print an error message if that was not possible:
+Предположим, что мы хотим показать пользователю веб-страницу или сообщение об ошибке,
+если загрузить страницу не удалось:
 
 ~~~
 import scala.util.Success
@@ -210,12 +242,16 @@ getURLContent("http://danielwestheide.com/foobar") match {
 }
 ~~~
 
-Recovering from a Failure
+Восстановление после ошибки
 -----------------------------------------------
 
-If you want to establish some kind of default behaviour in the case of a Failure, you don’t have to use getOrElse. An alternative is recover, which expects a partial function and returns another Try. If recover is called on a Success instance, that instance is returned as is. Otherwise, if the partial function is defined for the given Failure instance, its result is returned as a Success.
+Для продолжения вычислений после ошибки мы можем воспользоваться не только методом `getOrElse`. 
+Метод `recover` принимает частично определённую функцию и возвращает `Try`. 
+Если значение, на котором был вызван метод `recover`, завершится успешно, будет возвращён результат
+`Success[A]`, в случае исключения будет вызвана частично определённая функция. Если она определена
+для исключения, которое произошло, будет вызвана функция и результат будет обёрнут в `Success`.
 
-Let’s put this to use in order to print a different message depending on the type of the wrapped exception:
+Давайте с помощью метода `recover` вернём различные сообщения об ошибках в зависимости от типа исключения: 
 
 ~~~
 import java.net.MalformedURLException
@@ -227,23 +263,21 @@ val content = getURLContent("garbage") recover {
 }
 ~~~
 
-We could now safely get the wrapped value on the Try[Iterator[String]] that we assigned to content, because we know that it must be a Success. Calling content.get.foreach(println) would result in Please make sure to enter a valid URL being printed to the console.
+Теперь мы можем спокойно извлечь значение из `Try[Iterator[String]]`. Нам известно,
+что оно определено. Вызов `content.get.foreach(println)` приведёт к печати сообщения
+`Please make sure to enter a valid URL being printed to the console`.
 
-Conclusion
+Заключение
 ---------------------------------------------
 
-Idiomatic error handling in Scala is quite different from the paradigm known from languages like Java or Ruby. The Try type allows you to encapsulate computations that result in errors in a container and to chain operations on the computed values in a very elegant way. You can transfer what you know from working with collections and with Option values to how you deal with code that may result in errors – all in a uniform way.
+Идиоматичная обработка исключений происходит в Scala совсем не так как в Java или Ruby. 
+Тип `Try` позволяет элегантно комбинировать вычисления, которые могут завершиться с ошибкой.
+И всё это работает точно так же как и в коллекциях!
 
-To keep this article at a reasonable length, I haven’t explained all of the methods available on Try. Like Option, Try supports the orElse method. The transform and recoverWith methods are also worth having a look at, and I encourage you to do so.
+Мы не успели рассмотреть все методы для `Try`. Также как и в `Option` в `Try` есть метод `orElse`.
+Стоит присмотреться к методам `transform` и `recoverWith`.
 
-In the next part we are going to deal with Either, an alternative type for representing computations that may result in errors, but with a wider scope of application that goes beyond error handling.
-
-
-
-
-
-
-
-
-
+В следующей статье речь пойдёт о типе `Either`, другом способе представления вычислений,
+которые могут завершиться с ошибкой. Тип `Either` -- гораздо более общий, сфера его применения
+ е ограничивается обработкой исключений.
 
