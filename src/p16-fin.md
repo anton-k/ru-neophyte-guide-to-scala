@@ -1,103 +1,169 @@
-Part 16: Where to Go From Here
+Глава 16: Что дальше?
 ============================================================
 
-As I have already hinted at in the previous article, the Neophyte’s Guide to Scala is coming to an end. Over the last five months, we have delved into numerous language and library features of Scala, hopefully deepening your understanding of those features and their underlying ideas and concepts.
+Я уже намекнул в предыдущей главе, что "Путеводитель неофита по Scala" подходит к концу
+На протяжении последних пяти месяцев мы позакомились со многими возможностями языка Scala
+и его библиотек. Наедюсь, что Вы стали гораздо лучше разбираться в особенностях языка
+и стоящими за ними идеями. 
 
-As such, I hope this guide has served you well as a supplement to whatever introductory resources you have been using to learn Scala, whether you attended the Scala course at Coursera or learned from a book. I have tried to cover all the quirks I stumbled over back when I learned the language – things that were only mentioned briefly or not covered at all in the books and tutorials available to me – and I hope that especially those explanations were of value to you.
+Надеюсь, что это пособие стало хорошим дополнением для любого базового материала по Scala,
+будь то курс на Coursera или какая-нибудь книга. Я попытался рассказать обо всех особенностях
+языка, на которых я набил шишки. Тех моментах, которым не было уделено должного внимания во
+всех доступных мне книгах. Надеюсь, что мои пояснения Вам помогли.
 
-As the series progressed, we ventured into more advanced territory, covering ideas like type classes and path-dependent types. While I could go on writing about more and more arcane features, I felt like this would go against the idea of this series, which is clearly targeted at aspiring neophytes.
+Мы успели погрузиться в такие продвинутые темы как классы типов и ???path-dependent types. 
+Я мог бы продолжать углубляться дальше и дальше в более сложные темы, но это противоречит
+духу данного пособия. Оно предназначено для продолжающих новичков-неофитов.
 
-Hence, I will conclude this series with some suggestions of where to go from here if you want more. Rest assured that I will continue blogging about Scala, just not within the context of this series.
+Поэтому я завершу эти статьи напутствием в мир Scala. Я расскаже Вам, куда двигаться дальше. 
+не переживайте, я продолжу писать о Scala, но вне контекста этого пособия.
 
-How you want to continue your journey with Scala, of course, depends a lot on your individual preferences: Maybe you are now at a point where you would like to teach Scala to others, or maybe you are excited about Scala’s type system and would like to explore some of the language’s more arcane features by delving into type-level programming.
+То как продолжится Ваше путешествие в Scala зависит от Ваших потребностей.
+Возможно, вам бы хотелось научить других Scala или Вы в таком восторге от системы типов,
+что Вам хотелось бы изучить более продвинутые техники и погрузиться в программирование 
+на уровне типов.
 
-More often than not, a good way to really get comfortable with a new language and its whole ecosystem of libraries is to use it for creating something useful, i.e. a real application that is more than just toying around. Personally, I have also gained a lot from contributing to open source projects early on.
+Самым простой метод освоения нового языка заключается в том, чтобы написать с его помощью что-нибудь
+полезное, настоящее приложение, выходящее за рамки простых HelloWorld-ов. Лично я многому научился,
+участвуя в проектах с открытым исходным кодом.
 
-In the following, I will elaborate those four paths, which, of course, are not mutually exclusive, and provide you with numerous links to highly recommendable additional resources.
+Далее я расскажу подробнее об этих четырёх дорогах, они конечно не исключают друг-друга.
+Также я дам Вам множество ссылок к дополнительным материалам.
 
-Teaching Scala
+
+Быть учителем Scala
 ------------------------------------------------------
 
-Having followed this series, you should be familiar enough with Scala to be able to teach the basics. Maybe you are in a Java or Ruby shop and want to get your coworkers excited about Scala and functional programming.
+После изучения этого пособия Ваш уровень должен быть достаточно высок для того, чтобы 
+учить основам языка. Возможно вы работаете на Java или Ruby и хотите зажечь ваших
+коллег интересом к Scala и функциональному программированию.
 
-Great, then why not organize a workshop? A nice way of introducing people to a new language is to not do a talk with lots of slides, but to teach by example, introducing a language in small steps by solving tiny problems together. Active participation is key!
+Прекрасно, тогда почему бы Вам не организовать семинар по Scala? При этом лучше не 
+просто говорить и показывать слайды, но учить на примерах, постепенно решая маленькие
+задачки вместе. Самое главное -- активное участие учеников!
 
-If that’s something you’d like to do, the Scala community has you covered. Have a look at Scala Koans, a collection of small lessons, each of which provides a problem to be solved by fixing an initially failing test. The project is inspired by the Ruby Koans project and is a really good resource for teaching the language to others in small collaborative coding sessions.
+Если такой путь Вам по душе, обратите внимание на [коаны по Scala](http://www.scalakoans.org/), 
+набор небольших уроков, каждый из которых предлагает решить проблему, так чтобы программа
+прошла заданный тест, который изначально не выполняется. Проект написан под впечатлением от [коанов по  Ruby](http://rubykoans.com/).
+Это очень хороший способ объяснения языка, при совсместном решении небольших задачек.
+
+
 
 Another amazing project ideally suited for workshops or other events is Scalatron, a game in which bots fight against each other in a virtual arena. Why not teach the language by developing such a bot together in a workshop, that will then fight against the computer? Once the participants are familiar enough with the language, organize a tournament, where each participant will develop their own bot.
 
 
-Mastering arcane powers
+Изучение продвинутых техник
 -------------------------------------------------------
 
-We have only seen a tiny bit of what the Scala type system allows you to do. If this small hint at the high wizardry that’s possible got you excited and you want to master the arcane powers of type-level programming, a good starting resource is the blog series Type-Level Programming in Scala by Mark Harrah.
+Мы видели лишь малую часть всего того на, что способна система типов в Scala. 
+Если проблеск этого волшебства пробудил в Вас  сильный интерес к сакральному
+искусству программирования на уровне типов, блог Марка Харра [программирование на 
+уровне типов в Scala](http://apocalisp.wordpress.com/2010/06/08/type-level-programming-in-scala/) 
+может Вам очень понравиться.
 
-After that, I recommend to have a look at Shapeless, a library in which Miles Sabin explores the limits of the Scala language in terms of generic and polytypic programming.
+Кроме того, я рекомендую познакомиться с библиотекой [Shapeless](https://github.com/milessabin/shapeless),
+в которой Майлс Сэбин изучает возможности Scala в обобщённом и политиповом программировании (polytypic programming).
 
-Creating something useful
+Создание полезных приложений
 -------------------------------------------------------
 
-Reading books, doing tutorials and toying around with a new language is all fine to get a certain understanding of it, but in order to become really comfortable with Scala and its paradigm and learn how to think the Scala way, I highly recommend that you start creating something useful with it – something that is clearly more than a toy application (this is true for learning any language, in my opinion).
+Можно читать книги, разбираться в обучающих статьях, блогах. Это всё очень хорошо, но для
+того чтобы по-настоящему освоиться в новом языке, необходимо научиться на нём думать.
+Настоятельно рекомендую начать делать какое-нибудь полезное приложение -- что-то
+выходящее за рамки тренировочных задачек (полагаю, что это справедливо для любого языка).
 
-By tackling a real-world problem and trying to create a useful and usable application, you will also get a good overview of the ecosystem of libraries and get a feeling for which of those can be of service to you in specific situations.
+Попробовав свои силы в настоящей задаче, построив какое-нибудь полезное приложение, Вы 
+получите представление об экосистеме языка, его библиотеках, поймёте в каких ситуациях они
+могут вам пригодиться.
 
-In order to find relevant libraries or get updates of ones you are interested in, you should subscribe to implicit.ly and regularly take a look at Scala projects on GitHub.
+Для поиска подходящих библиотек или обновлений рекомендую подписаться на [http://notes.implicit.ly/](implicit.ly)
+и регулярно просматривать [Scala-проекты на Github](https://github.com/search?q=scala).
 
-### It’s all about the web
+### Кругом один Веб
 
-These days, most applications written in Scala will be some kind of server applications, often with a RESTful interface exposed via HTTP and a web frontend.
+Сейчас большинство приложений в Scala становятся серверными приложениями, зачастую с REST-интерфейсом
+с HTTP или веб-фронтендом.
 
-If the actor model for concurrency is a good fit for your use case and you hence choose to use the Akka toolkit, an excellent choice for exposing a REST API via HTTP is Spray Routing. This is a great tool if you don’t need a web frontend, or if you want to develop a single-page web application that will talk to your backend by means of a REST API.
+Если модель акторов пришлась Вам по душе, а следовательно и билиблиотека [Akka](http://akka.io/), прекрасным
+выбором для создания REST-приложений может стать библиотека [Spray](http://spray.io/). Это прекрасный инструмент,
+если Вам не нужен веб-фронтенд или Вы планируете создать одностраничное приложение, которое будет общаться
+с сервером с помощью REST API. 
 
-If you need something less minimalistic, of course, Play, which is part of the Typesafe stack, is a good choice, especially if you seek something that is widely adopted and hence well supported.
+Если Вам нужно что-то менее минималистичное, посмотрите в сторону [Play](http://www.playframework.com/).
+Этот фреймворк является частью [платформы от Typesafe](http://typesafe.com/platform). Она широко распространена
+и имеет хорошую поддержку.
 
-### Living in a concurrent world
+### Жизнь в параллельном мире
 
-If after our two parts on actors and Akka, you think that Akka is a good fit for your application, you will likely want to learn a lot more about it before getting serious with it.
+Если две главы об акторах и Akka убедили Вас в том, чтобы воспользоваться ими в следующем 
+приложении, придётся узнать о них гораздо больше.
 
-While the Akka documentation is pretty exhaustive and thus serves well as a reference, I think that the best choice for actually learning Akka is Derek Wyatt’s book Akka Concurrency, a preliminary version of which is already available as a PDF.
+Хотя [документация по Akka](http://akka.io/docs/) достаточно подробно и обстоятельно описывает все 
+доступные возможности и может служить прекрасным справочником, на мой взгляд, если вы хотите
+понять Akka, места лучшего чем книга Дерека Вайата  [Akka Concurrency]](http://www.artima.com/shop/akka_concurrency) Вам
+не найти. Доступна PDF-версия для предварительного просмотра. 
 
-Once you have got serious with Akka, you should definitely subscribe to Let It Crash, which provides you with news and advanced tips and tricks and regarding all things Akka.
+После углубления в Akka, Вам стоит подписаться на [Let It Crash](http://letitcrash.com/). 
+Там Вы найдёте множество продвинутых трюков и техник относящихся к Akka.
 
-If actors are not your thing and you prefer a concurrency model allowing you to leverage the composability of Futures, your library of choice is probably Twitter’s Finagle. It allows you to modularize your application as a bunch of small remote services, with support for numerous popular protocols out of the box.
+Если акторы Вам не близки, хочется чего-то близкого по духу к `Future`, бибилотека от Твиттер [Finagle](http://twitter.github.io/finagle/)
+-- Ваш выбор. Она позволяет структурировать приложение в виде набора небольших удалённых сервисов.
+Есть поддержка многих популярных протоколов.
 
-Contributing
+Участвовать в проектах с открытым исходным кодом
 -----------------------------------------------------
 
-Another really great way to learn a lot about Scala quickly is to start contributing to one or more open source projects – preferably to libraries you have been using while working on your own application.
+Другой, по настоящему прекрасный способ изучения Scala, заключается в участии в проектах с открытым исходным кодом --
+предпочтительно в проектах, посвящённых библиотекам, которыми вы сами пользуетесь. 
 
-Of course, this is nothing that is specific to Scala, but still I think it deserves to be mentioned. If you have only just learned Scala and are not using it at your day job already, it’s nearly the only choice you have to learn from other, more experienced Scala developers.
+Опять, тут нет ничего специфичного для Scala, но об этом стоит упомянуть. Если вы только-только
+изучили Scala и у вас нет возможности пользоваться ей на работе, это единственный путь -- учиться
+у более опытных Scala-разработчиков. 
 
-It forces you to read a lot of Scala code from other people, discovering how to do things differently, possibly more idiomatically, and you can have those experienced developers review your code in pull requests.
+Этот принуждает Вас читать много кода на Scala, который написан совершенно разными людьми, Вы обнаружите
+как много есть способов делать одни и те же вещи и какие из них являются идиоатичными а какие -- нет.
+К тому же более опытные коллеги будут проверять ваш код в пул-запросах. 
 
-I have found the Scala community at large to be very friendly and helpful, so don’t shy away from contributing, even if you think you’re too much of a rookie when it comes to Scala.
+В большинстве своём я нахожу сообщество Scala очень дружелюбным и отзывчивым. Не стесняйтесь 
+участвовать в чужих проектах, даже если вы всего лишь новичок. 
 
-While some projects might have their own way of doing things, it’s certainly a good idea to study the Scala Style Guide to get familiar with common coding conventions.
+У разных проектов могут быть свои тили разработки, всё же стоит познакомиться с общепринятыми нормами
+написания кода в [Scala Style Guide](http://docs.scala-lang.org/style/).
 
-Connecting
+Общение
 -----------------------------------------------------
 
-By contributing to open source projects, you have already started connecting with the Scala community. However, you may not have the time to do that, or you may prefer other ways of connecting to like-minded people.
+Участвуя в проектах с открытым исходным кодом, Вы начинаете общаться со Scala-сообществом. 
+однако, у Вам может не хватать на это времени или Вы предпочитаете другие способы общения
+с близкии по духу людьми. 
 
-Try finding a local Scala user group or meetup. Scala Tribes provides an overview of Scala communities across the globe, and the Scala topic at Lanyrd keeps you up-to-date on any kind of Scala-related event, from conferences to meetups.
+Попытайтесь найти клуб любителей Scala в вашей округе. Узнайте когда и где они встречаются. 
+Обзор Scala-сообществ по всему миру можно найти в [Scala Tribes](http://www.scala-tribes.org/).
+Также Вы не пропустите ни одного события в мире Scala, если подпишитесь на [Scala 
+в Larynd](http://lanyrd.com/topics/scala/)
 
-If you don’t like connecting in meatspace, the scala-user mailing list/Google group and the Scala IRC channel on Freenode may be good alternatives.
+Если Вам не нравится общаться вживую, подпишитесь на [почтовую рассылку о Scala в Google](https://groups.google.com/forum/#!forum/scala-user)
+и [Scala канал IRC на Freenode](https://client00.chat.mibbit.com/?url=irc%3A%2F%2Firc.freenode.net%2Fscala) может быть хорошей альтернативой.
 
-Other resources
 
-Regardless of which of the paths outlined above you follow, there are a few resources I would like to recommend:
+Другие источники
+-------------------------------------------------------
 
-* Functional Programming in Scala by Paul Chiusano and Rúnar Bjarnason, which is currently available as an Early Access Edition and teaches you a lot more about functional programming and thinking about problems with a functional mindset.
+Кроме того я бы хотел порекомендовать ещё несколько источников:
 
-* The Scala Documentation Site, which, for some reason, is not linked very prominently from the main Scala website, especially the available guides and tutorials.
+* [Functional Programming in Scala](http://www.manning.com/bjarnason/) by Paul Chiusano and Rúnar Bjarnason, книга доступна
+  для предварительного просмотра. Она учит функциональной парадигме и о том как решать задачи в рамках функционального подхода.
+
+* [The Scala Documentation Site](http://docs.scala-lang.org/), сайт документации по Scala, на который почему-то нет ссылки из 
+  главного сайта Scala, особенно хочу отметить доступные там [пособия](http://docs.scala-lang.org/overviews/) и 
+  [обучающие статьи](http://docs.scala-lang.org/tutorials/).
     
-*Resources for Getting Started With Functional Programming and Scala by Kelsey Innis contains a lot more helpful links about some of the topics we covered in this series.
+* [Resources for Getting Started With Functional Programming and Scala](http://nerd.kelseyinnis.com/blog/2013/01/07/resources-for-getting-started-with-functional-programming-and-scala/) by Kelsey Innis содержит множество ссылок по некоторым вопросам затронутым в настоящем пособии.
 
-Conclusion
+Заключение
 ------------------------------------------------------
 
-I hope you have enjoyed this series and that I could get you excited about Scala. While this series is coming to an end, I seriously hope that it’s just the beginning of your journey through Scala land. Let me know in the comments how your journey went so far and where you think it will go from here.
-
-
-
+Надеюсь, что Вы читали эти заметки с удовольствием и мне удалось увлечь вас. Несмотря на то, что мы подошли к концу,
+я всерьёз надеюсь, что это только начала вашего путешествия в удивительном мире Scala. Дайте мне знать о том,
+что происходит с вами на пути и куда вы движетесь.
 
