@@ -1,29 +1,38 @@
-Part 8: Welcome to the Future
+Глава 8: Добро пожаловать в Будущее
 ====================================================
 
-As an aspiring and enthusiastic Scala developer, you will likely have heard of Scala’s approach at dealing with concurrency – or maybe that was even what attracted you in the first place. Said approach makes reasoning about concurrency and writing well-behaved concurrent programs a lot easier than the rather low-level concurrency APIs you are confronted with in most other languages.
+Возможно Вы что-то слышали о том как устроена параллелизация программ в Scala,
+быть может именно поэтому Вы и заинтересовались Scala. Средства, предоставляемые
+Scala, очень сильно упрощают задачу построения параллельных приложений, в сравнении
+с теми низкоуровневыми интерфейсами, что доступны в большинстве других языков. 
 
-One of the two cornerstones of this approach is the Future, the other being the Actor. The former shall be the subject of this article. I will explain what futures are good for and how you can make use of them in a functional way.
+Параллельные вычисления в Scala основаны на двух столбах, один из них -- `Future`,
+другой -- `Actor`. О первом мы и поговорим в этой статье. Я объясню чем хорош 
+этот тип и как с ним работать в функциональном стиле. 
 
-Please make sure that you have version 2.9.3 or later if you want to get your hands dirty and try out the examples yourself. The futures we are discussing here were only incorporated into the Scala core distribution with the 2.10.0 release and later backported to Scala 2.9.3. Originally, with a slightly different API, they were part of the Akka concurrency toolkit.
+Убедитесь в том, что у вас установлен компилятор Scala версии не ниже 2.9.3,
+иначе примеры не будут работать. Этот тип появился в версии 2.10 и был портирован 
+для 2.9.3, изначально в немного другом виде он входил в состав библиотеки 
+для параллельных вычислений Akka.
 
-
-Why sequential code can be bad
+Когда последовательный код плох?
 ------------------------------------------------------
 
-Suppose you want to prepare a cappuccino. You could simply execute the following steps, one after another:
+Предположим, нам нужно приготовить капучино. Для этого просто
+выполним последовательность действий одно за другим:
 
-1. Grind the required coffee beans
-2. Heat some water
-3. Brew an espresso using the ground coffee and the heated water
-4. Froth some milk
-5. Combine the espresso and the frothed milk to a cappuccino
+1. Помолим кофейные зёрна
+2. Вскипятим воду
+3. Сварим эспрессо, смешав молотые зёрна с кипятком
+4. Взобьём молоко
+5. Добавим молоко в эспрессо и капучино готово
 
-Translated to Scala code, you would do something like this:
+Если перевести в Scala, мы получим следующее:
 
 ~~~
 import scala.util.Try
-// Some type aliases, just for getting more meaningful method signatures:
+
+// Определим осмысленные синонимы: 
 type CoffeeBeans = String
 type GroundCoffee = String
 case class Water(temperature: Int)
@@ -31,20 +40,22 @@ type Milk = String
 type FrothedMilk = String
 type Espresso = String
 type Cappuccino = String
-// dummy implementations of the individual steps:
+
+// Методы-заглушки для отдельных шагов алгоритма:
 def grind(beans: CoffeeBeans): GroundCoffee = s"ground coffee of $beans"
 def heatWater(water: Water): Water = water.copy(temperature = 85)
 def frothMilk(milk: Milk): FrothedMilk = s"frothed $milk"
 def brew(coffee: GroundCoffee, heatedWater: Water): Espresso = "espresso"
 def combine(espresso: Espresso, frothedMilk: FrothedMilk): Cappuccino = "cappuccino"
-// some exceptions for things that might go wrong in the individual steps
-// (we'll need some of them later, use the others when experimenting
-// with the code):
+
+// Исключения, на случай если что-то пойдёт не так
+// (они понадобяться нам позже):
 case class GrindingException(msg: String) extends Exception(msg)
 case class FrothingException(msg: String) extends Exception(msg)
 case class WaterBoilingException(msg: String) extends Exception(msg)
 case class BrewingException(msg: String) extends Exception(msg)
-// going through these steps sequentially:
+
+// последовательно выполним алгоритм:
 def prepareCappuccino(): Try[Cappuccino] = for {
   ground <- Try(grind("arabica beans"))
   water <- Try(heatWater(Water(25)))
@@ -53,37 +64,60 @@ def prepareCappuccino(): Try[Cappuccino] = for {
 } yield combine(espresso, foam)
 ~~~
 
-Doing it like this has several advantages: You get a very readable step-by-step instruction of what to do. Moreover, you will likely not get confused while preparing the cappuccino this way, since you are avoiding context switches.
+У такого подхода есть несколько преимуществ: у нас есть очень простой пошаговый рецепт, 
+мы знаем что нам делать и мы не собьёмся, поскольку у нас нет необходимости в переключении
+контекста.  
 
-On the downside, preparing your cappuccino in such a step-by-step manner means that your brain and body are on wait during large parts of the whole process. While waiting for the ground coffee, you are effectively blocked. Only when that’s finished, you’re able to start heating some water, and so on.
+Но есть и свои минусы. Нам часто приходиться ждать впустую. Мы не можем ничего делать пока 
+мы ждём приготовления зеёрен. Ведь мы собираемся перейти к следующему шагу только тогда,
+когда закончиться предыдущий.
 
-This is clearly a waste of valuable resources. It’s very likely that you would want to initiate multiple steps and have them execute concurrently. Once you see that the water and the ground coffee is ready, you’d start brewing the espresso, in the meantime already starting the process of frothing the milk.
+Очевидно, что мы теряем много времени. Скорее всего нам захочется начать сразу несколько 
+действий из этого списка одновременно. Как только зёрна и вода будут готовы, мы начнём делать
+эспрессо, по ходу взбивая молоко. 
 
-It’s really no different when writing a piece of software. A web server only has so many threads for processing requests and creating appropriate responses. You don’t want to block these valuable threads by waiting for the results of a database query or a call to another HTTP service. Instead, you want an asynchronous programming model and non-blocking IO, so that, while the processing of one request is waiting for the response from a database, the web server thread handling that request can serve the needs of some other request instead of idling along.
+Точно так же дела обстоят и в программировании. Множество потоков ждут ответа от веб-сервера.
+Мы не хотим, чтобы все они были заблокированы выполнением какого-нибудь запроса к базе 
+или вызовом HTTP-сервиса. В этом случае мы можем воспользоваться асинхронными вычислениями
+и неблокирующим IO, так чтобы при вызове одним из запросов базы данных, веб-сервер мог
+заниматься другими запросами, а не простаивать в пустую в ожидании ответа от базы.
 
-> “I heard you like callbacks, so I put a callback in your callback!”
+> “Я слышал, Вам нравятся функции обратного вызова, и я поместил одну функцию обратного вызова в другоую!”
 
-Of course, you already knew all that - what with Node.js being all the rage among the cool kids for a while now. The approach used by Node.js and some others is to communicate via callbacks, exclusively. Unfortunately, this can very easily lead to a convoluted mess of callbacks within callbacks within callbacks, making your code hard to read and debug.
+Конечно, Вы наслышаны обо всём этом через шумиху вокруг Node.js. Подход Node.js заключается в использовании
+функций обратного вызова (callback). К сожалению, при таком подходе код легко превращается в кашу из 
+функций обратного вызова, в других функциях, которые сами в других функциях, которые .... в других функциях
+обратного вызова. Такой код крайне трудно читать и  отлаживать.
 
-Scala’s Future allows callbacks, too, as you will see very shortly, but it provides much better alternatives, so it’s likely you won’t need them a lot.
+В Scala мы тоже можем пользоваться функциями обратного вызова через `Future`, но нам они не понадобятся.
+Есть лучшие альтернативы.
 
-> “I know Futures, and they are completely useless!”
+> “Я знаю о типе `Future`. Он совершенно бесполезен!”
 
-You might also be familiar with other Future implementations, most notably the one provided by Java. There is not really much you can do with a Java future other than checking if it’s completed or simply blocking until it is completed. In short, they are nearly useless and definitely not a joy to work with.
+Вам, возможно, встречалась реализация `Future` в Java. Всё что мы можем делать с `Future` в Java
+так это проверить завершилось оно или нет, или блокировать вычисления до завершения. Этот тип
+практически бесполезен и работать с ним не так сладко. 
 
-If you think that Scala’s futures are anything like that, get ready for a surprise. Here we go!
+Но Вы будете приятно удивлены тем, как устроен тип `Future` в Scala. Так приступим!
 
-Semantics of Future
+Семантика Future
 ----------------------------------------
 
-Scala’s Future[T], residing in the scala.concurrent package, is a container type, representing a computation that is supposed to eventually result in a value of type T. Alas, the computation might go wrong or time out, so when the future is completed, it may not have been successful after all, in which case it contains an exception instead.
+Тип `Future[T]`,  определённый в scala.concurrent package -- это тип контэйнер, представляющий вычисление, которое 
+когда-нибудь закончится и вернёт значение типа `T`. Вычисление может закончиться с ошибкой или не буть вычисленным
+в поставленные временные рамки. Если что-то пойдёт не так, то результат будет содержать исключение.
 
-Future is a write-once container – after a future has been completed, it is effectively immutable. Also, the Future type only provides an interface for reading the value to be computed. The task of writing the computed value is achieved via a Promise. Hence, there is a clear separation of concerns in the API design. In this post, we are focussing on the former, postponing the use of the Promise type to the next article in this series.
+`Future` это контейнер для однократной записи, когда вычисление будет завершено, значение этого типа неизменяемое. 
+Также `Future` предоставляет методы, позволяющие считать вычисляемое значение. Запись значения осуществляется
+с помощью типа `Promise`. Эти понятия чётко разделены в интерфейсе. Данная статья посвящена `Future`, а о `Promise`
+мы поговорим в следующей. 
 
-Working with Futures
+Работа с Future
 ---------------------------------------
 
-There are several ways you can work with Scala futures, which we are going to examine by rewriting our cappuccino example to make use of the Future type. First, we need to rewrite all of the functions that can be executed concurrently so that they immediately return a Future instead of computing their result in a blocking way:
+Существует несколько способов использования Future, мы посмотрим на них на нашем кофейном примере. 
+Во первых, нам нужно переписать все функции для отдельных шагов так, чтобы они
+сразу возвращали результат в виде `Future`, а не блокировали бы вычисления.
 
 ~~~
 import scala.concurrent.future
@@ -122,9 +156,10 @@ def brew(coffee: GroundCoffee, heatedWater: Water): Future[Espresso] = Future {
 }
 ~~~
 
-There are several things that require an explanation here.
+Что же происходит в примере? Поясним моменты связанные с `Future`.
 
-First off, there is the apply method on the Future companion object, that requires two arguments:
+Во первых, в объекте-компаньоне для `Future` определён метод `apply`,
+он принимает два аргумента:
 
 ~~~
 object Future {
@@ -132,16 +167,32 @@ object Future {
 }
 ~~~
 
-The computation to be computed asynchronously is passed in as the body by-name parameter. The second argument, in its own argument list, is an implicit one, which means we don’t have to specify one if a matching implicit value is defined somewhere in scope. We make sure this is the case by importing the global execution context.
+В параметр `body` по имени передаётся вычисление, которое будет выполняться асинхронно. 
+Второй параметр -- контекст вычисления, заключённый в отдельный список параметров, является имплицитным (implicit), 
+это означает, что мы можем не передавать его явно, если значение с таким типом определено
+в той же области видимости переменных. В случае `Future` для этого мы импортируем глобальный
+контекст вычисления.
 
-An ExecutionContext is something that can execute our future, and you can think of it as something like a thread pool. Since the ExecutionContext is available implicitly, we only have a single one-element argument list remaining. Single-argument lists can be enclosed with curly braces instead of parentheses. People often make use of this when calling the future method, making it look a little bit like we are using a feature of the language and not calling an ordinary method. The ExecutionContext is an implicit parameter for virtually all of the Future API.
+Значение типа `ExecutionContext` это то, что нужно для выполнения асинхронных вычислений, мы
+можем представить что это пул потоков. Поскольку этот параметр передаётся неявно, в нашем методе `apply`
+остаётся лишь один аргумент. Для передачи одного параметра в Scala мы можем воспользоваться как круглыми
+так и фигурными скобками. Очень часто для вызова `Future` используются именно фигурные скобки,
+словно это не обычный вызов, а применение некоторой встроенной фуннкции языка. Неявная передача 
+`ExecutionContext` происходит почти во всех методах интерфейса для `Future`.
 
-Furthermore, of course, in this simple example, we don’t actually compute anything, which is why we are putting in some random sleep, simply for demonstration purposes. We also print to the console before and after our “computation” to make the non-deterministic and concurrent nature of our code clearer when trying it out.
+В нашем кофейном примере нам не приходится ничего вычислять, поэтому, мы просто 
+вставили задержку потока вычисления с некоторым произвольным временем.  
+Также мы выводим сообщения на печать до и после задержки, для того чтобы увидеть
+неопредлённость, присущую параллельным вычислениям в нашем примере. 
 
-The computation of the value to be returned by a Future will start at some non-deterministic time after that Future instance has been created, by some thread assigned to it by the ExecutionContext.
+Вычисление возвращаемого значения в `Future` начнётся в некотором потоке из 
+`ExecutionContext` в неопределённое время после создания значения типа `Future`. 
 
-Callbacks
+
+Функции обратного вызова
 --------------------------
+
+
 
 Sometimes, when things are simple, using a callback can be perfectly fine. Callbacks for futures are partial functions. You can pass a callback to the onSuccess method. It will only be called if the Future completes successfully, and if so, it receives the computed value as its input:
 
