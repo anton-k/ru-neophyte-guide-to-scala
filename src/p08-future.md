@@ -192,9 +192,11 @@ object Future {
 Функции обратного вызова
 --------------------------
 
-
-
-Sometimes, when things are simple, using a callback can be perfectly fine. Callbacks for futures are partial functions. You can pass a callback to the onSuccess method. It will only be called if the Future completes successfully, and if so, it receives the computed value as its input:
+Иногда, функции обратного вызова очень хорошо подходят для простых случаев. Они могут 
+вызываться на `Future`  в виде частично определённых функций. Мы можем передать функцию 
+обратного вызова методу `onSuccess` и она будет вызана, только когда вычисление закончиться
+успешно. Функция принимает значение, которое должно когда-нибудь вернуть `Future`:
+ receives the computed value as its input:
 
 ~~~
 grind("arabica beans").onSuccess { case ground =>
@@ -202,9 +204,12 @@ grind("arabica beans").onSuccess { case ground =>
 }
 ~~~
 
-Similarly, you could register a failure callback with the onFailure method. Your callback will receive a Throwable, but it will only be called if the Future did not complete successfully.
+Также с помощью метода `onFailure` мы можем вызвать какую-нибудь функцию, если случилось исключение.
+Функция обратного вызова принимает значение типа `Throwable`, но она будет вызвана
+только в том случае, если `Future` не удасться вычислить значение.
 
-Usually, it’s better to combine these two and register a completion callback that will handle both cases. The input parameter for that callback is a Try:
+Обычно, лучше всего одновременно объявить действия для того и другого случая. 
+Тогда общая функция будет принимать значение типа `Try`:
 
 ~~~
 import scala.util.{Success, Failure}
@@ -213,38 +218,57 @@ grind("baked beans").onComplete {
   case Failure(ex) => println("This grinder needs a replacement, seriously!")
 }
 ~~~
+Поскольку мы передаём бобы вместо зёрен, метод `grind` закончиться с ошибкой, что приведёт к 
+`Failure` в `Future`.
 
-Since we are passing in baked beans, an exception occurs in the grind method, leading to the Future completing with a Failure.
 
-Composing futures
+Комбинируем `Future`
 ------------------------------------------
 
-Using callbacks can be quite painful if you have to start nesting callbacks. Thankfully, you don’t have to do that! The real power of the Scala futures is that they are composable.
+Функции обратного вызова могут быть очень неуклюжими, если нам приходиться 
+писать вложенные функции обратного вызова. К счастью, нам не нужно этого делать!
+Настоящая сила `Future` в Scala в том, что их можно комбинировать.
 
-If you have followed this series, you will have noticed that all the container types we discussed made it possible for you to map them, flat map them, or use them in for comprehensions and that I mentioned that Future is a container type, too. Hence, the fact that Scala’s Future type allows you to do all that will not come as a surprise at all.
+Вы скорее всего заметили, что все коллекции, что встретились нам предоставляют
+интерфейс из методов `map`, `flatMap` и др. Мы можем строить их с помощью `for`-генераторов.
+Но `Future` также является типом-коллекцией. Поэтому в Scala мы можем пользоваться всеми 
+этими методами и для `Future`. 
 
-The real question is: What does it really mean to perform these operations on something that hasn’t even finished computing yet?
+Но вот вопрос: что означают все эти операции для значения, которое даже ещё
+не было вычислено?
 
-### Mapping the future
+### Преобразование `Future`
 
-Haven’t you always wanted to be a traveller in time who sets out to map the future? As a Scala developer you can do exactly that! Suppose that once your water has heated you want to check if its temperature is okay. You can do so by mapping your Future[Water] to a Future[Boolean]:
+Хотели бы вы путешествовать во времени? Узнать о том, что даже ещё не случилось? 
+Scala даёт вам такую возможность! Предположим, что когда закипит вода, мы хотим
+проверить температуру. Мы можем сделать это преобразовав `Future[Water]` в `Future[Boolean]`:
 
 ~~~
 val temperatureOkay: Future[Boolean] = heatWater(Water(25)).map { water =>
-  println("we're in the future!")
+  println("Мы в будущем!")
   (80 to 85).contains(water.temperature)
 }
 ~~~
 
-The Future[Boolean] assigned to temperatureOkay will eventually contain the successfully computed boolean value. Go change the implementation of heatWater so that it throws an exception (maybe because your water heater explodes or something) and watch how we're in the future will never be printed to the console.
+Результат этого выражения `Future[boolean]`, когда-нибудь в будущем вернёт вычисленное
+логичесское значение. Измените определение `heatWater` так, чтобы оно возвращало
+исключение (например кастрюля с водой могла взорваться) и вы убедитесь в том, что
+сообщение `"Мы в будущем!"` не будет напечатано. 
 
-When you are writing the function you pass to map, you’re in the future, or rather in a possible future. That mapping function gets executed as soon as your Future[Water] instance has completed successfully. However, the timeline in which that happens might not be the one you live in. If your instance of Future[Water] fails, what’s taking place in the function you passed to map will never happen. Instead, the result of calling map will be a Future[Boolean] containing a Failure.
+Внутри функции, которую мы передаём в `map`, будущее уже наступило или точнее предполагаемое будущее. 
+Эта функция выполняется как только значение `Future[Water]` будет успешно вычислено. Однако время может
+пойти и по-другому пути. Если `Future[Water]` завершиться с ошибкой, будущее для этой функции никогда 
+не наступит. Вместо этого результатом вызова будет значение типа `Future[Boolean]`, содержащее
+`Failure`.
 
-### Keeping the future flat
+### Метод flatMap для Future
 
-If the computation of one Future depends on the result of another, you’ll likely want to resort to flatMap to avoid a deeply nested structure of futures.
+Если одно асинхронное вычисление зависит от другого асинхронного вычисления, то нам понадобится
+метод `flatMap`. Так мы не заблудимся в дебрях вложенных `Future`. 
 
-For example, let’s assume that the process of actually measuring the temperature takes a while, so you want to determine whether the temperature is okay asynchronously, too. You have a function that takes an instance of Water and returns a Future[Boolean]:
+Предположим, что процесс для измерения температуры необходимо некоторое время, 
+поэтому проверка температуры должна происходить асинхронно. У нас есть функция,
+что принимает воду (`Water`) и возвращает `Future[Boolean]`:
 
 ~~~
 def temperatureOkay(water: Water): Future[Boolean] = Future {
@@ -252,7 +276,8 @@ def temperatureOkay(water: Water): Future[Boolean] = Future {
 }
 ~~~
 
-Use flatMap instead of map in order to get a Future[Boolean] instead of a Future[Future[Boolean]]:
+Теперь вместо `map` для проверки воды после кипения мы воспользуемся методом `flatMap`,
+так мы получим `Future[Boolean]`, а не `Future[Future[Boolean]]`:
 
 ~~~
 val nestedFuture: Future[Future[Boolean]] = heatWater(Water(25)).map {
@@ -263,11 +288,13 @@ val flatFuture: Future[Boolean] = heatWater(Water(25)).flatMap {
 }
 ~~~
 
-Again, the mapping function is only executed after (and if) the Future[Water] instance has been completed successfully, hopefully with an acceptable temperature.
+Функция, переданная в `flatMap`, будет вызвана только в том случае если значение в `Future[Water]` будет
+вычислено успешно. 
 
-### For comprehensions
+### For-генераторы
 
-Instead of calling flatMap, you’ll usually want to write a for comprehension, which is essentially the same, but reads a lot clearer. Our example above could be rewritten like this:
+Зачастую вызов `flatMap` можно заменить более простым выражением с `for`-генераторами.
+Код станет гораздо более наглядным. Перепишем наш пример:
 
 ~~~
 val acceptable: Future[Boolean] = for {
@@ -276,7 +303,9 @@ val acceptable: Future[Boolean] = for {
 } yield okay
 ~~~
 
-If you have multiple computations that can be computed in parallel, you need to take care that you already create the corresponding Future instances outside of the for comprehension.
+Если у нас есть несколько параллельных вычислений, необходимо следить за тем чтобы
+соответствующие им `Future` создавались за пределами `for`-генратора. 
+Так следующее выражение будет выполняться последовательно:
 
 ~~~
 def prepareCappuccinoSequentially(): Future[Cappuccino] = {
@@ -289,9 +318,13 @@ def prepareCappuccinoSequentially(): Future[Cappuccino] = {
 }
 ~~~
 
-This reads nicely, but since a for comprehension is just another representation for nested flatMap calls, this means that the Future[Water] created in heatWater is only really instantiated after the Future[GroundCoffee] has completed successfully. You can check this by watching the sequential console output coming from the functions we implemented above.
+Этот код прекрасно выглядит, но поскольку это всего лишь представление 
+вложенных вызовов метода `flatMap`, это означает, что значение `Future[Water]`,
+созданное в `heatWater`, создаётся только тогда, когда `Future[GroundCoffee]`
+будет успешно вычислено. Мы можем проверить это по выводу сообщений на печать.
 
-Hence, make sure to instantiate all your independent futures before the for comprehension:
+Поэтому не забывайте о том, что необходимо создавать независимые `Future`
+за пределами `for`-генератора:
 
 ~~~
 def prepareCappuccino(): Future[Cappuccino] = {
@@ -307,17 +340,33 @@ def prepareCappuccino(): Future[Cappuccino] = {
 }
 ~~~
 
-Now, the three futures we create before the for comprehension start being completed immediately and execute concurrently. If you watch the console output, you will see that it’s non-deterministic. The only thing that’s certain is that the "happy brewing" output will come last. Since the method in which it is called requires the values coming from two other futures, it is only created inside our for comprehension, i.e. after those futures have completed successfully.
+Теперь все три асинхронных вычисления начнуться одновременно. 
+в этом можно убедиться по выводу сообщений на печать. Видно, что 
+порядок их появления не определён. Единственное в чём мы можем быть уверены, 
+так это в том, что сообщение `"happy brewing"` будет появится последним. 
+Поскольку метод, ответственный за его печать, зависит от двух других 
+асинхронных вычислений. Он может быть вызван только внутри `for`-генератора,
+когда предыдущие вычисления успешно завершатся.
 
-### Failure projections
+### Проекции исключений
 
-You will have noticed that Future[T] is success-biased, allowing you to use map, flatMap, filter etc. under the assumption that it will complete successfully. Sometimes, you may want to be able to work in this nice functional way for the timeline in which things go wrong. By calling the failed method on an instance of Future[T], you get a failure projection of it, which is a Future[Throwable]. Now you can map that Future[Throwable], for example, and your mapping function will only be executed if the original Future[T] has completed with a failure.
+Вы скорее всего обратили внимание на то, что `Future[T]` делает акцент на
+успешном вычислении значения, благодаря этому мы можем пользоваться методами
+`map`, `flatMap`, `filter` и др, подразумевая успешное завершение вычислений.
+Иногда нам хочется воспользоваться функциональным стилем работы с `Future`
+и в другой альтернативе, в которой случаются исключения. Вызовом метода `failed`
+на `Future` мы можем получить проекцию исключений `Future[Throwable]` и вызвать метод `map`,
+который будет выполнен только в том случае, если что-то пойдёт не так. 
 
-Outlook
+
+В перспективе
 ------------------------------------------------
 
-You have seen the Future, and it looks bright! The fact that it’s just another container type that can be composed and used in a functional way makes working with it very pleasant.
+Мы посмотрели на `Future` и оно прекрасно! Работать с этим типом -- одно удовольствие, ведь
+он поддерживает все методы для коллекций. Мы можем комбинировать значения в функциональном стиле.
 
-Making blocking code concurrent can be pretty easy by wrapping it in a call to future. However, it’s better to be non-blocking in the first place. To achieve this, one has to make a Promise to complete a Future. This and using the futures in practice will be the topic of the next part of this series.
-
+Мы можем очень легко превратить блокирующий код в асинхронный, завернув егов `Future`. 
+Однако, лучше всего начинать с асинхронных вычислений. Мы можем пообещать (promise),
+что когда-нибудь вернём значение. На языке Scala это означает, создать значение типа `Promise`,
+которое завершится в будущем (создаст значение в типе `Future`). Об этом мы и поговорим в следующей статье.
 
