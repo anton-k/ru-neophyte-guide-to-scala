@@ -22,7 +22,7 @@
 
 * [Глава 9: Типы Promise и Future на практике](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p09-promises-and-futures.md)
 
-* [Глава 10: Staying DRY with higher-order functions](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p10-hof.md)
+* [Глава 10: Не повторяемся вместе с функциями высшего порядка](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p10-hof.md)
 
 * [Глава 11: Currying and Partially applied functions](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p11-currying.md)
 
