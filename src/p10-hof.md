@@ -1,31 +1,52 @@
-Part 10: Staying DRY With Higher-order Functions
+Глава 10: Не повторяемся вместе с функциями высшего порядка
 ===========================================================
 
-In the previous articles, I discussed the composable nature of Scala’s container types. As it turns out, being composable is a quality that you will not only find in Future, Try, and other container types, but also in functions, which are first class citizens in the Scala language.
+В прошлых статьях, мы говорили о том как легко комбинировать коллекции в Scala. 
+Оказывается мы можем комбинировать не только `Future`, `Try` и другие типы-колекции,
+но и функции. Функции являются значениями первого класса в Scala. 
 
-Composability naturally entails reusability. While the latter has often been claimed to be one of the big advantages of object-oriented programming, it’s a trait that is definitely true for pure functions, i.e. functions that do not have any side-effects and are referentially transparent.
+Возможность составлять из простых элементов более сложные влечёт за собой 
+многократное использование кода. Переиспользование кода часто записывают
+в ряд достоинств объектно ориентированного подхода, но эта черта справедлива
+и для чистых функций, поскольку функции, которые не выполняют побочных эффектов
+прозрачны по ссылкам.
 
-One obvious way is to implement a new function by calling already existing functions in its body. However, there are other ways to reuse existing functions: In this blog post, I will discuss some fundementals of functional programming that we have been missing out on so far. You will learn how to follow the DRY principle by leveraging higher-order functions in order to reuse existing code in new contexts.
+Один из простейших способов реализации новой функции заключается в вызове других функций в её теле.
+Но есть и другие способы. В этой статье мы обсудим базовые понятия функционального
+программирования. Вы узнаете о том как в лучших традициях принципа DRY(Don't Repeat Youself - не повторяйтесь)
+функции высшего порядка применяются для повторного использования кода. 
 
-On higher-order functions
+Функции высшего порядка
 -----------------------------------------------------------
 
-A higher-order function, as opposed to a first-order function, can have one of three forms:
+Функция высшего порядка, в отличае от функции первого порядка, имеет один из трёх видов:
 
-1. One or more of its parameters is a function, and it returns some value.
-2. It returns a function, but none of its parameters is a function.
-3. Both of the above: One or more of its parameters is a function, and it returns a function.
+1. Один из параметров функции также является функцией и она возвращает значение.
 
-If you have followed this series, you have seen a lot of usages of higher-order functions of the first type: We called methods like map, filter, or flatMap and passed a function to it that was used to transform or filter a collection in some way. Very often, the functions we passed to these methods were anonymous functions, sometimes involving a little bit of duplication.
+2. Она возвращает функцию, но ни один из параметров не является функцией.
 
-In this article, we are only concerned with what the other two types of higher-order functions can do for us: The first of them allows us to produce new functions based on some input data, whereas the other gives us the power and flexibility to compose new functions that are somehow based on existing functions. In both cases, we can eliminate code duplication.
+3. И первый и второй пункт: функция возвращает функцию и один из параметров является функцией.
 
-And out of nowhere, a function was born
+Нам уже встречалось множество примеров функций первого типа. Методы `map`, `filter`, `flatMap`
+-- все они принимают функции, с помощью которых мы преобразуем или фильтруем коллекции. 
+Очень асто, мы передавали анонимные функции, что иногда приводило к дублированию.
+
+В этой статье мы сосредоточимся на последних двух типах функций высшего порядка. 
+первый из них позволяет нам строить функции на основе некоторых данных, а второй
+даёт возможность строить одни функции на основе других. И в том и в другом случае 
+мы можем избежать дублирования кода.
+
+Из ничего появилась функция
 ---------------------------------------------------------------
 
-You might think that the ability to create new functions based on some input data is not terribly useful. While we mainly want to deal with how to compose new functions based on existing ones, let’s first have a look at how a function that produces new functions may be used.
+Может показаться, что в функции, которая создаёт другие функции нет особой необходимости.
+Хотя нас больше интересует случай составление новых функций из ранее определённых, давайте
+для начала посмотрим на примеры того как могут применятся функции, которые создают
+другие функции.
 
-Let’s assume we are implementing a freemail service where users should be able to configure when an email is supposed to be blocked. We are representing emails as instances of a simple case class:
+Предположим, что мы оздаём приложение для обработки электронных писем. Пользователь 
+хочет настроить фильтр блокируемых сообщений. В нашем приложении письма представлены 
+таким простым `case`-классом:
 
 ~~~
 case class Email(
@@ -35,44 +56,57 @@ case class Email(
   recipient: String)
 ~~~
 
-We want to be able to filter new emails by the criteria specified by the user, so we have a filtering function that makes use of a predicate, a function of type Email => Boolean to determine whether the email is to be blocked. If the predicate is true, the email is accepted, otherwise it will be blocked:
+Мы хотим филтровать сообщения на основе некоторого критерия, определённого пользователем.
+В итоге у нас будет функция `Email => Boolean`, с помощью которой мы будем фильтровать письма.
+Если функция вернёт истину мы принимаем письмо, в противном случае -- отбрасываем.
 
 ~~~
 type EmailFilter = Email => Boolean
 def newMailsForUser(mails: Seq[Email], f: EmailFilter) = mails.filter(f)
 ~~~
 
-Note that we are using a type alias for our function, so that we can work with more meaningful names in our code.
+Обратите внимание на то, как мы дали специальное имя нашей функции. Мы объявили новый тип-синоним
+для повышения читаемости кода.
 
-Now, in order to allow the user to configure their email filter, we can implement some factory functions that produce EmailFilter functions configured to the user’s liking:
+Теперь мы можем создать методы-фабрики, создающие `EmailFilter` на основе предпочтений пользователей:
 
 ~~~
 val sentByOneOf: Set[String] => EmailFilter =
   senders => email => senders.contains(email.sender)
+
 val notSentByAnyOf: Set[String] => EmailFilter =
   senders => email => !senders.contains(email.sender)
+
 val minimumSize: Int => EmailFilter = n => email => email.text.size >= n
+
 val maximumSize: Int => EmailFilter = n => email => email.text.size <= n
 ~~~
 
-Each of these four vals is a function that returns an EmailFilter, the first two taking as input a Set[String] representing senders, the other two an Int representing the length of the email body.
+Каждая из этих четырёх переменных возвращает `EmailFilter`. Первые две принимают `Seq[String]`,
+представляющую набор адресатов-отправителей. Оставшиеся принимают целое число, указывающее на
+длину содержания письма.
 
-We can use any of these functions to create a new EmailFilter that we can pass to the newMailsForUser function:
+С помощью любой из этих функций мы можем создать новый фильтр `EmailFilter` для функции `newMailsForUser`:
 
 ~~~
 val emailFilter: EmailFilter = notSentByAnyOf(Set("johndoe@example.com"))
+
 val mails = Email(
   subject = "It's me again, your stalker friend!",
   text = "Hello my friend! How are you?",
   sender = "johndoe@example.com",
   recipient = "me@example.com") :: Nil
+
 newMailsForUser(mails, emailFilter) // returns an empty list
 ~~~
 
-This filter removes the one mail in the list because our user decided to put the sender on their black list. We can use our factory functions to create arbitrary EmailFilter functions, depending on the user’s requirements.
+Этот фильтр удалит одно сообщение, поскольку пользователь решил добавить отправителя
+в чёрный список. Так с помощью методов-фабрик мы можем создавать самые разные
+фильтры сообщений `EmailFilter`, согласно пользовательским предпочтениям.
 
-Reusing existing functions
+Переиспользование функций
 ------------------------------------------------------
+
 
 There are two problems with the current solution. First of all, there is quite a bit of duplication in the predicate factory functions above, when initially I told you that the composable nature of functions made it easy to stick to the DRY principle. So let’s get rid of the duplication.
 
