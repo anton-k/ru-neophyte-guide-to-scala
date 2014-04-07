@@ -1,18 +1,27 @@
-Part 11: Currying and Partially Applied Functions
+Глава 11: Каррирование и частичное применение функций
 ===================================================================
 
-Last week’s article was all about avoiding code duplication, either by lifting existing functions to match your new requirements or by composing them. In this article, we are going to have a look at two other mechanisms the Scala language provides in order to enable you to reuse your functions: Partial application of functions and currying.
+Прошлой статья была посвящена вопросам устранения дублирования. Для устранения 
+повторов мы либо переписывали функции по-другому (определяли более общии функции),
+либо выражали одни функции через композицию других. В этой статье мы посмотрим на
+две новые возможности языка Scala, которые также позволят нам существенно снизить
+дублирование кода. Это частичное применение функций и каррирование.
 
-Partially applied functions
+Частичное применение функций
 ----------------------------------------------------------
 
-Scala, like many other languages following the functional programming paradigm, allows you to apply a function partially. What this means is that, when applying the function, you do not pass in arguments for all of the parameters defined by the function, but only for some of them, leaving the remaining ones blank. What you get back is a new function whose parameter list only contains those parameters from the original function that were left blank.
+В Scala как и во многих других языках, поддерживающих функциональное программирование, мы можем
+применять функцию частично. Это означает, что при вызове функции мы передаём ей лишь часть параметров,
+оставшиеся же будут пустыми. При этом мы получим новую функцию, которая будет принимать те аргументы,
+которые мы оставили пустыми. 
 
-Do not confuse partially applied functions with partially defined functions, which are represented by the PartialFunction type in Scala.
+Не путайте частичное применение функций с частично определёнными функциями (типом `PartialFunction`).
 
-To illustrate how partial function application works, let’s revisit our example from last week: For our imaginary free mail service, we wanted to allow the user to configure a filter so that only emails meeting certain criteria would show up in their inbox, with all others being blocked.
+Давайте посмотрим как это работает на примере. Для этого вернёмся к примеру из прошлой статье.
+Для нашего воображаемого почтового сервиса мы хотели чтобы пользователь мог настраивать фильтрацию
+входящих сообщений, так чтобы он получал лишь письма, удовлетворяющие некоторым требованиям.
 
-Our Email case class still looks like this:
+Наш `case`-класс `Email` остаётся прежним:
 
 ~~~
 case class Email(
@@ -20,25 +29,36 @@ case class Email(
   text: String,
   sender: String,
   recipient: String)
+
 type EmailFilter = Email => Boolean
 ~~~
 
-The criteria for filtering emails were represented by a predicate Email => Boolean, which we aliased to the type EmailFilter, and we were able to generate new predicates by calling appropriate factory functions.
+Критерий фильтрации писем описывается предикатом `Email => Boolean`, мы дали ему синоним `EmailFilter`. 
+Мы могли определять новые предикаты через уже определённые методы-фабрики.
 
-Two of the factory functions from last week’s article created EmailFiter instances that checked if the email text satisfied a given minimum or maximum length. This time we want to make use of partial function application to implement these factory functions. We want to have a general method sizeConstraint and be able to create more specific size constraints by fixing some of its parameters.
+Два метода из прошлой статьи создавали фильтры на основе проверки максимальной и минимальной длины письма.
+На этот раз мы хотим воспользоваться частичным применением функции для определения этих методов. 
+Мы хотим создать обобщённый метод `sizeConstraint`, так чтобы частные фильтры получались с помощью
+подстановки части его параметров.  
 
-Here is our revised sizeConstraint method:
+Вот наш метод `sizeConstraint`:
 
 ~~~
 type IntPairPred = (Int, Int) => Boolean
 def sizeConstraint(pred: IntPairPred, n: Int, email: Email) = pred(email.text.size, n)
 ~~~
 
-We also define an alias IntPairPred for the type of predicate that checks a pair of integers (the value n and the text size of the email) and returns whether the email text size is okay, given n.
+Мы определили синоним для предиката, проверяющего пары целых чисел (некоторое число `n` и
+размер длины письма). 
 
-Note that unlike our sizeConstraint function from last week, this one does not return a new EmailFilter predicate, but simply evaluates all the arguments passed to it, returning a Boolean. The trick is to get such a predicate of type EmailFilter by partially applying sizeConstraint.
+Обратите внимание на то, что в отличае от предыдущей версии, функци `sizeConstraint` 
+не возвращает теперь предикат `EmailFilter`, но просто вычисляет все аргументы, переданные
+в функцию и возвращает `Boolean`. Трюк состоит в том, чтобы получить нужный предикат 
+с помощью частичного применения.
 
-First, however, because we take the DRY principle very seriously, let’s define all the commonly used instances of IntPairPred. Now, when we call sizeConstraint, we don’t have to repeatedly write the same anonymous functions, but can simply pass in one of those:
+Но сначала, поскольку мы всерьёз решили не повторяться, давайте определим 
+основные предикаты `IntPairPred`. После этого при вызове `sizeConstraint`
+нам не придётся раз за разом выписывать анонимные функции:
 
 ~~~
 val gt: IntPairPred = _ > _
@@ -48,48 +68,66 @@ val le: IntPairPred = _ <= _
 val eq: IntPairPred = _ == _
 ~~~
 
-Finally, we are ready to do some partial application of the sizeConstraint function, fixing its first parameter with one of our IntPairPred instances:
+Наконец, всё готово для того чтобы выполнить частичное применение функции `sizeConstraint`.
+Мы зафиксируем первый аргумент с одним из наших значений для `IntPairPred`:
 
 ~~~
 val minimumSize: (Int, Email) => Boolean = sizeConstraint(ge, _: Int, _: Email)
 val maximumSize: (Int, Email) => Boolean = sizeConstraint(le, _: Int, _: Email)
 ~~~
 
-As you can see, you have to use the placeholder _ for all parameters not bound to an argument value. Unfortunately, you also have to specify the type of those arguments, which makes partial function application in Scala a bit tedious.
+Как видно из определений, нам необходимо воспользоваться прочерком для обозначения 
+пропущенных аргументов. К сожалению, нам также ппришлось явно указать типы пропущенных
+аргументов. Поэтому частичное применение в Scala может быть несколько занудным.
 
-The reason is that the Scala compiler cannot infer these types, at least not in all cases – think of overloaded methods where it’s impossible for the compiler to know which of them you are referring to.
+Компилятор Scala не может вывести эти типы самостоятельно, по крайней мере не для
+всех случаев -- например, для перегруженных методов компилятор не сможет понять
+к какому етоду относится вызов.
 
-On the other hand, this makes it possible to bind or leave out arbitrary parameters. For example, we can leave out the first one and pass in the size to be used as a constraint:
+С другой стороны теперь у нас есть выбор какие параметры оставить. к примеру, мы можем
+оставить первый параметр и зафиксировать размер письма:
 
 ~~~
 val constr20: (IntPairPred, Email) => Boolean = sizeConstraint(_: IntPairPred, 20, _: Email)
 val constr30: (IntPairPred, Email) => Boolean = sizeConstraint(_: IntPairPred, 30, _: Email)
 ~~~
 
-Now we have two functions that take an IntPairPred and an Email and compare the email text size to 20 and 30, respectively, but the comparison logic has not been specified yet, as that’s exactly what the IntPairPred is good for.
+Теперь у нас есть две функции, которые принимают `IntPairPred` и `Email` и сравнивают размер
+письма с числами `20` и `30`. Но то как они проводят сравнения не фиксируется. Как раз за это и отвечает
+`IntPairPred`.
 
-This shows that, while quite verbose, partial function application in Scala is a little more flexible than in Clojure, for example, where you have to pass in arguments from left to right, but can’t leave out any in the middle.
+На этом примере видно, что несмотря на многословность, частичное применение
+в Scala всё же немного более общее чем в Clojure, где мы обязаны
+передавать аргументы по-порядку слева направо, но не можем пропустить 
+переметр в середине.
 
-### From methods to function objects
+### От методов к функциональным объектам
 
-When doing partial application on a method, you can also decide to not bind any parameters whatsoever. The parameter list of the returned function object will be the same as for the method. You have effectively turned a method into a function that can be assigned to a val or passed around:
+При частичном применении методов мы можем не связывать ни один из параметров. 
+Тогда список аргументов для возвращаемого функционального объекта будет
+совпадать с исходным списком аргументов для метода. Так мы можем превратить
+метод в функцию, которая может быть присвоена переменной или передана в метод.
 
 ~~~
 val sizeConstraintFn: (IntPairPred, Int, Email) => Boolean = sizeConstraint _
 ~~~
 
-### Producing those EmailFilters
+### Сщздаём EmailFilter
 
-We still haven’t got any functions that adhere to the EmailFilter type or that return new predicates of that type – like sizeConstraint, minimumSize and maximumSize don’t return a new predicate, but a Boolean, as their signature clearly shows.
+У нас всё ещё нет ни одной фукции, которая возвращала бы `EmailFilter`. 
+Ведь `sizeConstraint`, `minimumSize` и `maximumSize` -- ни одна из этих функций
+не возвращает `EmailFilter`. Все они возвращают `Boolean` как видно из сигнатур их типов.
 
-However, our email filters are just another partial function application away. By fixing the integer parameter of minimumSize and maximumSize, we can create new functions of type EmailFilter:
+Но наши фильтры находятся лишь в одном частичном применении от нас. 
+Зафиксировав целочисленный параметр для `minimumSize` и `maximumSize` мы
+можем создать новые функции типа `EmailFilter`:
 
 ~~~
 val min20: EmailFilter = minimumSize(20, _: Email)
 val max20: EmailFilter = maximumSize(20, _: Email)
 ~~~
 
-Of course, we could achieve the same by partially applying our constr20 we created above:
+Мы могли выполнить то же самое через частичноеприменение функции `constr20`:
 
 ~~~
 val min20: EmailFilter = constr20(ge, _: Email)
