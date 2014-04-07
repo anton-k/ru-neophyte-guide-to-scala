@@ -1,18 +1,33 @@
-Part 9: Promises and Futures in Practice
+Part 9: Promise и Future на практике
 ===================================================
 
-In the previous article in this series, I introduced you to the Future type, its underlying paradigm, and how to put it to use to write highly readable and composable asynchronously executing code.
+В предыдущей главе мы познакомились с типом `Future`, его семантикой, тем как
+как, собирая составные `Future` из простых, мы можем писать очень наглядные асинхронные
+программы.
 
-In that article, I also mentioned that Future is really only one piece of the puzzle: It’s a read-only type that allows you to work with the values it will compute and handle failure to do so in an elegant way. In order for you to be able to read a computed value from a Future, however, there must be a way for some other part of your software to put that value there. In this post, I will show you how this is done by means of the Promise type, followed by some guidance on how to use futures and promises in practice.
+В той статье я также упомянул о том, что `Future` -- это лишь одна сторона медали: 
+это тип, коотрый позволяет создавать астнхронно вычисляемые значения, которые доступны
+только для чтения, также предусмотрен очень элегантный способ обработки исключений.
+Но для того чтобы мы могли считать значение из `Future` должен быть какой-то другой
+механизм, позволяющий это значение записать. В этой статье речь мы посмотрим как это 
+делается с помощью типа `Promise`. В конце статьи мы посмотрим как `Future` и `Promise`
+применяются на практике.
 
-Promises
+Тип Promise
 ------------------------------------------
 
-In the previous article on futures, we had a sequential block of code that we passed to the apply method of the Future companion object, and, given an ExecutionContext was in scope, it magically executed that code block asynchronously, returning its result as a Future.
+В предыдущей статье мы передавали блок последовательного кода вместе с контекстом
+вычисления `ExecutionContext` в метод `apply`, который волшебным образом выполнял 
+код асинхронно, возвращая результат в `Future`.
 
-While this is an easy way to get a Future when you want one, there is an alternative way to create Future instances and have them complete with a success or failure. Where Future provides an interface exclusively for querying, Promise is a companion type that allows you to complete a Future by putting a value into it. This can be done exactly once. Once a Promise has been completed, it’s not possible to change it any more.
+Это очень простой метод создания значений типа `Future`, но есть и другой метод.
+В то время как `Future` предоставляет методы только для чтения, тип `Promise` позволяет
+заверщить вычисление `Future` записью значения. Значение может быть записано только 
+один раз. Как только обещание (promise) было исполнено мы не можем его изменить.
 
-A Promise instance is always linked to exactly one instance of Future. If you call the apply method of Future again in the REPL, you will indeed notice that the Future returned is a Promise, too:
+Значение типа `Promise` всегда связано лишь с одним значением типа `Future`. 
+Если мы присмотримся к типу значение, которое возвращается из метода `apply`
+для объекта `Future`, мы сможем заметить, что он также возвращает `Promise`:
 
 ~~~
 import concurrent.Future
@@ -22,58 +37,76 @@ val f: Future[String] = Future { "Hello world!" }
 // f: scala.concurrent.Future[String] = scala.concurrent.impl.Promise$DefaultPromise@793e6657
 ~~~
 
-The object you get back is a DefaultPromise, which implements both Future and Promise. This is an implementation detail, however. The Future and the Promise to which it belongs may very well be separate objects.
+Мы получили значение типа `DefaultPromise`, который наследует от `Future` и `Promise`. 
+Но это лишь деталь реализации. Он может приинадлежать к разным значениям `Future` и `Promise`.
 
-What this little example shows is that there is obviously no way to complete a Future other than through a Promise – the apply method on Future is just a nice helper function that shields you from this.
+Из этого примера видно, что нет другого способа завершения `Future`, кроме как через `Promise`.
+Это и происходит нутри метода `apply` для `Future`.
 
-Now, let’s see how we can get our hands dirty and work with the Promise type directly.
+Теперь давайте попробуем поработать с `Promise` напрямую.
 
-Promising a rosy future
+Обещая светлое будущее
 --------------------------------------------------
 
-When talking about promises that may be fulfilled or not, an obvious example domain is that of politicians, elections, campaign pledges, and legislative periods.
+Одно из первых, что приходит на ум при упоминании обещаний, это политика, выборы, избирательный срок
+и прочее.
 
-Suppose the politicians that then got elected into office promised their voters a tax cut. This can be represented as a Promise[TaxCut], which you can create by calling the apply method on the Promise companion object, like so:
+Предположим, что кандидаты пообещали своим избирателям понизить налоги. Мы можем
+представить это с помощью значения типа `Promise[TaxCut]`, которое можно создать 
+с помощью метода `apply` для объекта `Promise`:
 
 ~~~
 import concurrent.Promise
+
 case class TaxCut(reduction: Int)
-// either give the type as a type parameter to the factory method:
+
+// необходимо указать тип TaxCut в конструкторе:
 val taxcut = Promise[TaxCut]()
-// or give the compiler a hint by specifying the type of your val:
+
+// или подсказать тип компилятору при объявлении переменной:
 val taxcut2: Promise[TaxCut] = Promise()
 ~~~
 
-Once you have created a Promise, you can get the Future belonging to it by calling the future method on the Promise instance:
+Как только было создано значение типа `Promise` мы можем получить связанное
+с ним значение типа `Future` вызовом метода `future` на исходном значении:
 
 ~~~
 val taxcutF: Future[TaxCut] = taxcut.future
 ~~~
 
-The returned Future might not be the same object as the Promise, but calling the future method of a Promise multiple times will definitely always return the same object to make sure the one-to-one relationship between a Promise and its Future is preserved.
+Возвращённое значение может не совпадать с исходным значением типа `Promise`. 
+Но каждый вызов `future` на одном значении `Promise` будет возвращать одно и то
+же значение типа `Future`. Так между значениями  `Promise` и `Future` сохраняется отношение
+один к одному.
 
-Completing a Promise
+Завершение обещания
 ------------------------------------------------
 
-Once you have made a Promise and told the world that you will deliver on it in the forseeable Future, you better do your very best to make it happen.
+Если  мы пообещали (Promise) всем сделать что-то в ближайшем будущем (Future), нам лучше
+всего приложить все усилия для того чтобы это произошло. . 
 
-In Scala, you can complete a Promise either with a success or a failure.
+В Scala мы можем завершить `Promise` либо методом `success` либо методом `failure`.
 
-#### Delivering on your Promise
+#### Выполнение обещаний
 
-To complete a Promise with a success, you call its success method, passing it the value that the Future associated with it is supposed to have:
+Для того чтобы сдержать обещание мы вызываем метод `success` на значении `Promise`, передав ему 
+итоговое значение: 
 
 ~~~
 taxcut.success(TaxCut(20))
 ~~~
 
-Once you have done this, that Promise instance is no longer writable, and future attempts to do so will lead to an exception.
+После этого `Promise` нельзя изменить и любые попытки приведут к исключениям.
 
-Also, completing your Promise like this leads to the successful completion of the associated Future. Any success or completion handlers on that future will now be called, or if, for instance, you are mapping that future, the mapping function will now be executed.
+Также вызов метода `success`  приводит к успешному завершению в принадлежащем данному `Promise`
+значению типа `Future`. Будут вызваны все связанные с ним обработчики или функции преобразователи
+или фильтры. 
 
-Usually, the completion of the Promise and the processing of the completed Future will not happen in the same thread. It’s more likely that you create your Promise, start computing its value in another thread and immediately return the uncompleted Future to the caller.
+Как правило завершение `Promise` и обработка `Future` будет происходить в разных потоках вычисления.
+Скорее всего мы будем делать так: мы создадим значение типа `Promise`, начнём вычислять значение
+в другом потоке и тут же вернём из функции `Future`. 
 
-To illustrate, let’s do something like that for our taxcut promise:
+Посмотрим как это происходит на примере:
 
 ~~~
 object Government {
@@ -90,9 +123,14 @@ object Government {
 }
 ~~~
 
-Please don’t get confused by the usage of the apply method of the Future companion object in this example. I’m just using it because it is so convenient for executing a block of code asynchronously. I could just as well have implemented the computation of the result (which involves a lot of sleeping) in a Runnable that is executed asynchrously by an ExecutorService, with a lot more boilerplate code. The point is that the Promise is not completed in the caller thread.
+Пусть вас не смущает вызов метода `apply` для `Future` в этом примере. 
+Здесь он используется просто для удобства запуска асинхронных вычсилений.
+Точно так же я мог бы выполнить вычисление (состоящее в основном из пауз) в `Runnable`,
+асинхронно выполняющимся в `ExecutionContext`, но пришлось бы написать гораздо больше 
+шаблонного кода. Суть примера в том, что завершение `Promise` происходит в отдельном потоке.
 
-Let’s redeem our campaign pledge then and add an onComplete callback function to our future:
+Давайт е вернёмся к нашей выборной компании и добавим функцию обратного вызова к `Future`
+с помощью метода `onComplete`:
 
 ~~~
 import scala.util.{Success, Failure}
@@ -106,14 +144,18 @@ val taxCutF: Future[TaxCut] = Government.redeemCampaignPledge()
   }
 ~~~
 
-If you try this out multiple times, you will see that the order of the console output is not deterministic. Eventually, the completion handler will be executed and run into the success case.
+Если выполнить этот код несколько раз ,то станет ясно, что порядок вывода 
+на консоль не определён. Рано или поздно обработчик будет выполнен в успешной альтернативе.
 
-#### Breaking Promises like a sir
+#### Нарушаем обещания
 
-As a politician, you are pretty much used to not keeping your promises. As a Scala developer, you sometimes have no other choice, either. If that happens, you can still complete your Promise instance gracefully, by calling its failure method and passing it an exception:
+Будучи политиком, Вы уже успели привыкнуть к нарушению обещаний. Будучи Scala-разработчиком,
+иногда, у нас просто нет другого выбора. Если это случилось мы можем завершить `Promise`
+вызовом метода `failure` с некоторым исключением:
 
 ~~~
 case class LameExcuse(msg: String) extends Exception(msg)
+
 object Government {
   def redeemCampaignPledge(): Future[TaxCut] = {
        val p = Promise[TaxCut]()
@@ -128,55 +170,85 @@ object Government {
 }
 ~~~
 
-This implementation of the redeemCampaignPledge() method will to lots of broken promises. Once you have completed a Promise with the failure method, it is no longer writable, just as is the case with the success method. The associated Future will now be completed with a Failure, too, so the callback function above would run into the failure case.
+Эта реализация метода `redeemCampaignPledge` приведёт к нарушению многих обещаний. 
+Как только мы завершили `Promise` вызовом `failure`, значение нельзя изменить. 
+Связанное с ним значение типа `Future` также будет завершено с помощью `Failure`
+и будут вызваны все обработчики связанные с альтернативой безуспешного выполнения.
+ 
+Также мы можем завершить `Promise` знчением типа `Try`, вызвав метод `complete`. 
+Если `Try` содержит `Success` связанное `Future` будет завершено успешно, 
+иначе -- безуспешно. 
 
-If you already have a Try, you can also complete a Promise by calling its complete method. If the Try is a Success, the associated Future will be completed successfully, with the value inside the Success. If it’s a Failure, the Future will completed with that failure.
-
-Future-based programming in practice
+Асинхронное программирование на практике
 ----------------------------------------------------------
 
-If you want to make use of the future-based paradigm in order to increase the scalability of your application, you have to design your application to be non-blocking from the ground-up, which basically means that the functions in all your application layers are asynchronous and return futures.
+Если вы хотите повысить масштабируемость вашего приложения за счёт асинхронного
+выполнения кода, необходимо чтобы функции на всех уровнях приложения были бы
+асинхронными и возвращали `Future`.
 
-A likely use case these days is that of developing a web application. If you are using a modern Scala web framework, it will allow you to return your responses as something like a Future[Response] instead of blocking and then returning your finished Response. This is important since it allows your web server to handle a huge number of open connections with a relatively low number of threads. By always giving your web server Future[Response], you maximize the utilization of the web server’s dedicated thread pool.
+Скорее всего это понадобиться Вам для построения веб-приложения. Современные
+веб-фреймворки на Scala позволяют нам реагировать асинхронно, обработчики
+возвращают ответ в виде `Future[Response]`, вместо того, чтобы блокировать 
+поток вычисления и возвращать ответ после того как он будет сформирован. 
+Это важно. Поскольку благодаря этому веб-сервер сможет ответить на
+огромное число запросов с помощью относительно низкого число потоков.
+Возвращая `Future[Response]` вы позволяете веб-серверу наиболее эффективно
+использовать ресурсы пула потоков. 
 
-In the end, a service in your application might make multiple calls to your database layer and/or some external web service, receiving multiple futures, and then compose them to return a new Future, all in a very readable for comprehension, such as the one you saw in the previous article. The web layer will turn such a Future into a Future[Response].
+Также любой сервис может делать несколько запросов к базе или другим внешним
+веб-сервисам, собирая итоговый результат на основе многих асинхронных результатов.
+И для этого мы можем воспользоваться `for`-генераторами (как было показано в прошлой статье).
+Веб-сервер соберёт такой асинхронный результат в `Future[Response]`. 
 
-However, how do you implement this in practice? There are are three different cases you have to consider:
+Но как всё это реализовать на практике? Есть три возможных случая.
 
-### Non-blocking IO
+### Неблокирующее IO
 
-Your application will most certainly involve a lot of IO. For example, your web application will have to talk to a database, and it might act as a client that is calling other web services.
+В нашем приложении скорее всего будет много операций ввода-вывода. К примеру, нам нужно обратиться к базе данных
+или к сторонним веб серверам.
 
-If at all possible, make use of libraries that are based on Java’s non-blocking IO capabilities, either by using Java’s NIO API directly or through a library like Netty. Such libraries, too, can serve many connections with a reasonably-sized dedicated thread pool.
+По возможности пользуйтесь Java библиотеками, которые пользуются неблокирующим I/O.
+Можно восопользоваться напрямую NIO API для Java или библиотекой-надстройкой, такой как
+Netty. Такие бибилиотеки также могут обрабатывать большое число запросов спомощью 
+разумно ограниченного в размерах пула потоков. 
 
-Developing such a library yourself is one of the few places where directly working with the Promise type makes a lot of sense.
+Разработка такой бибилотеки весьма подходящее место для применения `Promise`.
 
-### Blocking IO
+### Блокирующее IO
 
-Sometimes, there is no NIO-based library available. For instance, most database drivers you’ll find in the Java world nowadays are using blocking IO. If you made a query to your database with such a driver in order to respond to a HTTP request, that call would be made on a web server thread. To avoid that, place all the code talking to the database inside a future block, like so:
+Иногда у нас нет доступных NIO-бибилиотек. Напрмер большинство драйверов для БД в Java
+используют блокирующее IO. Если мы сделаем вызов такого драйвера для ответа на HTTP-запрос,
+это приведёт к тому что вызов будет сделан в потоке веб-сервера. Для избежания этого
+заключите блок кода для общения с базой в Future::
 
 ~~~
-// get back a Future[ResultSet] or something similar:
+// вернёт Future[ResultSet] или что-то вроде того:
 Future {
   queryDB(query)
 }
 ~~~
 
-So far, we always used the implicitly available global ExecutionContext to execute such future blocks. It’s probably a good idea to create a dedicated ExecutionContext that you will have in scope in your database layer.
+До сих пор мы всегда пользовались неявно определённым глобальным `ExecutionContext` для выполнения
+блоков кода во `Future`. Было бы здорово уметь определять специфический контекст вычисления
+для общения с нашей базой данных.
 
-You can create an ExecutionContext from a Java ExecutorService, which means you will be able to tune the thread pool for executing your database calls asynchronously independently from the rest of your application:
-
+Мы можем создать `ExecutionContext` с помощью `ExecutionService` из Java. Так мы сможем
+настроить наш контекст выполнения специально для базы данных, он не будет зависеть от остального
+приложения:
 
 ~~~
 import java.util.concurrent.Executors
 import concurrent.ExecutionContext
+
 val executorService = Executors.newFixedThreadPool(4)
 val executionContext = ExecutionContext.fromExecutorService(executorService)
 ~~~
 
-### Long-running computations
+### Долго живущие вычисления
 
-Depending on the nature of your application, it will occasionally have to call long-running tasks that don’t involve any IO at all, which means they are CPU-bound. These, too, should not be executed by a web server thread. Hence, you should turn them into Futures, too:
+В зависимости от назначения приложения иногда нам нужно выполнить задачу, совсем не связанную 
+с вводом-выводом, которая вычисляется очень долго. Она требует много ресурсов CPU. Не стоит выполнять 
+такие задачи в потоке  веб сервера. Для этого необходимо обернуть её в `Future`:
 
 ~~~
 Future {
@@ -184,16 +256,18 @@ Future {
 }
 ~~~
 
-Again, if you have long-running computations, having them run in a separate ExecutionContext for CPU-bound tasks is a good idea. How to tune your various thread pools is highly dependent on your individual application and beyond the scope of this article.
+Также хорошо позаботиться о том, чтобы для таких задач, нагружающих CPU, был определён
+отдельный `ExecutionContext`. Как настроить `ExecutionContext` зависит от приложения,
+обсуждение этого вопроса выходит за рамки данной статьи.
 
-Summary
+
+Итоги
 --------------------------------------
 
+В этой статье мы познакомились с типом `Promise`, что отвечает за запись значений в `Future`. 
+Также мы узнали о том как `Promise` и `Future` применяются на практике.
 
-In this article, we looked at promises, the writable part of the future-based concurrency paradigm, and how to use them to complete a Future, followed by some advice on how to put futures to use in practice.
-
-In the next part of this series, we are taking a step back from concurrency issues and examine how functional programming in Scala can help you to make your code more reusable, a claim that has long been associated with object-oriented programming.
-
-
-
+В следующей статье мы отвлечёмся от параллельных вычислений и углубимся в функциональное программирование. 
+Как оно позволяет писать наглядный код пригодный для многократного использования, это справедливо
+не только для объектно ориентированного программирования. 
 
