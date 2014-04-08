@@ -134,82 +134,115 @@ val min20: EmailFilter = constr20(ge, _: Email)
 val max20: EmailFilter = constr20(le, _: Email)
 ~~~
 
-Spicing up your functions
+Украсим наши функции
 ----------------------------------------------
 
-Maybe you find partial function application in Scala a little too verbose, or simply not very elegant to write and look at. Lucky you, because there is an alternative.
+Возможно частичное применение функции показалось Вам слишком многословным или просто 
+не таким элегантным. К счастью, у нас есть альтернатива.
 
-As you should know by now, methods in Scala can have more than one parameter list. Let’s define our sizeConstraint method such that each parameter is in its own parameter list:
+Методы в Scala могут иметь несколько списков аргументов. Давайте перепишем
+`sizeConstraint` так, чтобы каждый аргумент находился бы в своём списке.
 
 ~~~
 def sizeConstraint(pred: IntPairPred)(n: Int)(email: Email): Boolean =
   pred(email.text.size, n)
 ~~~
 
-If we turn this into a function object that we can assign or pass around, the signature of that function looks like this:
+Если мы превратим этот метод в функциональны объект, пригодный для присваивания
+или передачи в другие методы, сигнатура новой функции будет иметь вид:
 
 ~~~
 val sizeConstraintFn: IntPairPred => Int => Email => Boolean = sizeConstraint _
 ~~~
 
-Such a chain of one-parameter functions is called a curried function, so named after Haskell Curry, who re-discovered this technique and got all the fame for it. In fact, in the Haskell programming language, all functions are in curried form by default.
+Такая цепочка функций с одним параметром называется каррированой функцией, 
+она названа в честь Хаскела Карри, он изобрёл этот метод. В языке Haskell
+все функции являются каррированными по умолчанию. 
 
-In our example, it takes an IntPairPred and returns a function that takes an Int and returns a new function. That last function, finally, takes an Email and returns a Boolean.
+В нашем примере она принимает `IntPairPred` и возвращает функцию, которая принимает
+`Int` и возвращает новую функцию. Последняя функция принимает `Email` и возвращает 
+`Boolean`. 
 
-Now, if we we want to bind the IntPairPred, we simply apply sizeConstraintFn, which takes exactly this one parameter and returns a new one-parameter function:
+Теперь, если мы захотим связать `IntPairPred` со значением, мы просто подставим значение
+в функцию `sizeConstraintFn`, которая принимает в точности один аргумент и возвращает
+функцию одного аргумента:
 
 ~~~
 val minSize: Int => Email => Boolean = sizeConstraint(ge)
 val maxSize: Int => Email => Boolean = sizeConstraint(le)
 ~~~
 
-There is no need to use any placeholders for parameters left blank, because we are in fact not doing any partial function application.
+Теперь нам не нужно использовать прочерки для пропущенных параметров, потому
+что мы не делаем частичное применение.
 
-We can now create the same EmailFilter predicates as we did using partial function application before, by applying these curried functions:
+Теперь мы можем определеить точно такие же предикаты, что и в случае частичного применения:
 
 ~~~
 val min20: Email => Boolean = minSize(20)
 val max20: Email => Boolean = maxSize(20)
 ~~~
 
-Of course, it’s possible to do all this in one step if you want to bind several parameters at once. It just means that you immediately apply the function that was returned from the first function application, without assigning it to a val first:
+Конечно мы можем выполнить всё это и за один шаг, подставив несколько параметров.
+В этом случае мы сразу подставляем значение в только что полученную функцию,
+и пропускаем шаг присваивания к промежуточной переменной:
 
 ~~~
 val min20: Email => Boolean = sizeConstraintFn(ge)(20)
 val max20: Email => Boolean = sizeConstraintFn(le)(20)
 ~~~
 
-### Currying existing functions
+### Каррирование уже определённых функций
 
-It’s not always the case the you know beforehand whether writing your functions in curried form makes sense or not – after all, the usual function application looks a little more verbose than for functions that have only declared a single parameter list for all their parameters. Also, you’ll sometimes want to work with third-party functions in curried form, when they are written with a single parameter list.
+Не всегда мы знаем заранее в каком виде нам понадобится функция -- с каррированием или без.
+Обычный вызов для каррированных функций выглядит немного более громоздким, чем в случае
+функций с одним списком аргументов. Кроме того иногда мы хотим воспользоваться каарированием
+в сторонних библиотечных функциях, которые определены с одним списком аргументов.
 
-Transforming a function with multiple parameters in one list to curried form is, of course, just another higher-order function, generating a new function from an existing one. This transformation logic is available in form of the curried method on functions with more than one parameter. Hence, if we have a function sum, taking two parameters, we can get the curried version simply calling calling its curried method:
+Но преобразование функции со многими параметрами к каррированной форме записи можно запросто сделать 
+с помощью функции высшего порядка. И у нас есть такая функция. Мы можем сделать это вызовом метода `curried`
+для исходной функции. Так если у нас есть функция `sum`, принимающая два аргумента, мы можем получить
+каррированную версию функции просто вызвав метод `curried`:
 
 ~~~
 val sum: (Int, Int) => Int = _ + _
 val sumCurried: Int => Int => Int = sum.curried
 ~~~
+Для обратного преобразования есть метод `Function.uncurried`. Он ожидает на вход
+каррированную функцию. 
 
-If you need to do the reverse, you have Function.uncurried at your fingertips, which you need to pass the curried function to get it back in uncurried form.
+### Внедрение зависимостей в функциональном стиле
 
-### Injecting your dependencies the functional way
+В заключение статьи, давайте посмотрим как каррированные функции могут применятся на 
+уровне проектирования приложений. Если Вы пришли из мира промышленных приложений
+на Java или .NET, Вам наверняка очень знакома необходимость использования внедрения зависимостей.
+Этот приём берёт на себя подключение зависимостей к объектам. В Scala нет сторонних средств
+для реализации этой техники, потому что в самом языке определено несколько конструкций,
+позволяющих делать внедрение зависимостей, гораздо более простым способом. 
 
-To close this article, let’s have a look at what role curried functions can play in the large. If you come from the enterprisy Java or .NET world, you will be very familiar with the necessity to use more or less fancy dependency injection containers that take the heavy burden of providing all your objects with their respective dependencies off you. In Scala, you don’t really need any external tool for that, as the language already provides numerous features that make it much less of a pain to this all on your own.
+При программировании в функциональном стиле всё равно возникает необходимость внедрения 
+зависимостей. Функции, находящиеся на более высоком уровне приложения, будут вызывать 
+другие функции. Если эти вызовы будут зашиты в код программы, нам будет очень сложно
+тестировать их вне контекста приложения. Поэтому нам необходимо чтобы функция
+принимала на вход все высокоуровневые функции, от которых она зависит.
 
-When programming in a very functional way, you will notice that there is still a need to inject dependencies: Your functions residing in the higher layers of your application will have to make calls to other functions. Simply hard-coding the functions to call in the body of your functions makes it difficult to test them in isolation. Hence, you will need to pass the functions your higher-layer function depends on as arguments to that function.
+Но это может привести к излишнему дублированию кода, если мы будем постоянно
+передавать все зависимости при вызове функции. Как раз для этого случая и подходят
+каррирование. Каррирование и частичное применение -- один из способов организации
+внедрения зависимостей в функциональном стиле.
 
-It would not be DRY at all to always pass the same dependencies to your function when calling it, would it? Curried functions to the rescue! Currying and partial function application are one of several ways of injecting dependencies in functional programming.
-
-The following, very simplified example illustrates this technique:
+Посмотрим как это делается на следующем примере:
 
 ~~~
 case class User(name: String)
+
 trait EmailRepository {
   def getMails(user: User, unread: Boolean): Seq[Email]
 }
+
 trait FilterRepository {
   def getEmailFilter(user: User): EmailFilter
 }
+
 trait MailboxService {
   def getNewMails(emailRepo: EmailRepository)(filterRepo: FilterRepository)(user: User) =
     emailRepo.getMails(user, true).filter(filterRepo.getEmailFilter(user))
@@ -217,11 +250,18 @@ trait MailboxService {
 }
 ~~~
 
-We have a service that depends on two different repositories, These dependencies are declared as parameters to the getNewMails method, each in their own parameter list.
+У нас есть сервис, который зависит от двух разных репозиториев. 
+Эти зависимости определены в виде аргументов метода `getNewMails`, 
+причём каждый находится в своём собственном списке аргументов.
 
-The MailboxService already has a concrete implementation of that method, but is lacking one for the newMails field. The type of that field is User => Seq[Email] – that’s the function that components depending on the MailboxService will call.
+В сервисе `MailBoxService` реализовано всё кроме поля `newMails`. 
+Это функция типа `User => Seq[Email]`. Её вызов будет зависеть от 
+тех компонентов, которые будут использованы в `MailboxService`.
 
-We need an object that extends MailboxService. The idea is to implement newMails by currying the getNewMails method and fixing it with concrete implementations of the dependencies, EmailRepository and FilterRepository:
+Нам нужен объект, который будет наследовать от `MailboxService`. 
+Основная идея в том, чтобы определить `newMails` через связывание 
+первых двух аргументов метода `getNewMails` с конкретной реализацией
+зависимостей для `EmailRepository` и `FilterRepository`:
 
 ~~~
 object MockEmailRepository extends EmailRepository {
@@ -236,17 +276,25 @@ object MailboxServiceWithMockDeps extends MailboxService {
 }
 ~~~
 
-We can now call MailboxServiceWithMoxDeps.newMails(User("daniel")) without having to specify the two repositories to be used. In a real application, of course, we would very likely not use a direct reference to a concrete implementation of the service, but have this injected, too.
+Теперь мы можем вызывать `MailboxServiceWithMoxDeps.newMails(User("daniel"))` 
+без явной передачи дополнительных зависимостей. Но в настоящем приложении
+мы скорее всего будем пользоваться не конкретной реализацией сервиса, но
+трэйтом, также пригодным для внедрения зависимостей. 
 
-This is probably not the most powerful and scaleable way of injecting your dependencies in Scala, but it’s good to have this in your tool belt, and it’s a very good example of the benefits that partial function application and currying can provide in the wild. If you want know more about this, I recommend to have a look at the excellent slides for the presentation ”Dependency Injection in Scala” by Debasish Ghosh, which is also where I first came across this technique.
+Возможно это не лучший способ внедрения зависимостей в Scala, но нам будет
+совсем не лишним знать о нём, к тому же это хороший пример использования каррирования
+и частичного применения функций на практике. Для подробного изучения этого вопроса я 
+рекомендую вам взглянуть на превосходную презентацию Debasish Ghosh 
+[”Dependency Injection in Scala”](http://de.slideshare.net/debasishg/dependency-injection-in-scala-beyond-the-cake-pattern).
+Я почерпнл эти знания как раз из них.
 
-Summary
+Итоги
 ------------------------------------------
 
-In this article, we discussed two additional functional programming techniques that help you keep your code free of duplication and, on top of that, give you a lot of flexibility, allowing you to reuse your functions in manifold ways. Partial function application and currying have more or less the same effect, but sometimes one of them is the more elegant solution.
+В этой статье мы обсудили две дополнительные возможности для программирования в функциональном стиле,
+с его помощью мы можем существенно низить дублирование, сохраняя гибкость кода, он стимулирует написание
+обобщённых функций, которые могут применятся для определения многих частных случаев. Частичное применение 
+и каррирование выполняют по-сути одну и ту же роль, но в том или ином случае одна из форм может 
+оказаться более элегантной.
 
-In the next part of this series, we will continue to look at ways to keep things flexible, discussing the what and how of type classes in Scala.
-
-
-
-
+В следующей статье мы узнаем как повысить гибкость кода с помощью классов типов.

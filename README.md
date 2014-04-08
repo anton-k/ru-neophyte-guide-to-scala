@@ -24,7 +24,7 @@
 
 * [Глава 10: Не повторяемся вместе с функциями высшего порядка](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p10-hof.md)
 
-* [Глава 11: Currying and Partially applied functions](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p11-currying.md)
+* [Глава 11: Каррирование и частичное применение](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p11-currying.md)
 
 * [Глава 12: Type classes](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p12-type-classes.md)
 
