@@ -55,15 +55,26 @@
 Модель акторов
 ---------------------------------------------------------------------
 
-The Actor programming model is aimed at avoiding all the problems described above, allowing you to write highly performant concurrent code that is easy to reason about. Unlike the widely used approach of shared mutable state, it requires you to design and write your application from the ground up with concurrency in mind – it’s not really possible to add support for it later on.
+Модель акторов может избавить нас от всех упомянутых выше проблем, позволяя
+нам писать высокоэффективный но в то же время очень ясный код. Она принуждает
+нас к тому, чтобы код был параллельным с самого начала. Ведь добавить распараллеливание
+позже на практике не представляется возможным. 
 
-The idea is that your application consists of lots of light-weight entities called actors. Each of these actors is responsible for only a very small task, and is thus easy to reason about. A more complex business logic arises out of the interaction between several actors, delegating tasks to others or passing messages to collaborators for other reasons.
+Основная идея в том, что приложение построено из многих легковесных процессов, 
+называемых акторами. Каждый актор отвечает за одну очень маленькую задачу,
+поэтому нам легко понять, что он делает. Более сложная логика возникает из
+взаимодействия нескольких акторов, мы решаем задачи с помощью одних акторов,
+в это время посылаем сообения совокупности других. 
 
-### The Actor System
+### Система акторов
 
-Actors are pitiful creatures: They cannot live on their own. Rather, each and every actor in Akka resides in and is created by an actor system. Aside from allowing you to create and find actors, an ActorSystem provides for a whole bunch of additional functionality, none of which shall concern us right now.
+Акторы -- несамостоятельные существа, они не могут жить сами по себе. Каждый актор
+в Akka создаётся *системой акторов* (actor system). Кроме создания акторов и поиска,
+система акторов `ActorSystem` позволяет нам выполнять множество других операций, о которых
+мы пока умолчим. 
 
-In order to try out the example code, please add the following resolver and dependency to your SBT-based Scala 2.10 project first:
+Для того чтобы код примеров запускался сначала добавьте следующие зависимости в SBT-проект
+с компилятором Scala 2.10:
 
 ~~~
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases"
@@ -71,25 +82,34 @@ resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.3"
 ~~~
 
-Now, let’s create an ActorSystem. We’ll need it as an environment for our actors:
+Теперь давайте создадим систему акторов `ActorSystem`. Она будет выступать в роли 
+среды обитания для наших акторов:
 
 ~~~
 import akka.actor.ActorSystem
+
 object Barista extends App {
   val system = ActorSystem("Barista")
   system.shutdown()
 }
 ~~~
 
-We created a new instance of ActorSystem and gave it the name "Barista" – we are returning to the domain of coffee, which should be familiar from the article on composable futures.
+Мы создали новое значение типа `ActorSystem` и дали ей имя `"Barista"` (или "бармен"" по англ.). Мы возвращаемся к кофейному примеру,
+с которым мы уже встречались в статье про `Future`.
 
-Finally, we are good citizens and shut down our actor system once we no longer need it.
+Кроме того мы добропорядочно завершили работу системы акторов, по окончанию работы приложения.
 
-### Defining an actor
+### Определение акторов
 
-Whether your application consists of a few dozen or a few million actors totally depends on your use case, but Akka is absolutely okay with a few million. You might be baffled by this insanely high number. It’s important to understand that there is not a one-to-one relationship between an actor and a thread. You would soon run out of memory if that were the case. Rather, due to the non-blocking nature of actors, one thread can execute many actors – switching between them depending on which of them has messages to be processed.
+Наше приложение может состоять из нескольких десятков или нескольких миллионов акторов, Akka
+с этим прекрасно справляется. Но постойте-постойте, несколько миллионов? Вас может удивить это
+невероятно огромное число. Важно понимать, что между акторами и потоками нет соответствия один к одному.
+Если бы это было так мыбы очень скоро исчерпали бы всю память. Поскольку акторы не блокируют 
+потоки вычисления, один поток может выполнять несколько акторов, перключаясь между ними, в зависимости
+от того к какому актору приходят сообщения. 
 
-To understand what is actually happening, let’s first create a very simple actor, a Barista that can receive orders but doesn’t really do anything apart from printing messages to the console:
+Для иллюстрации давайте создадим очень простой актор. Бармен может принимать заказы, 
+но пока он ничего не будет делать, только выводить сообщения напечать:
 
 ~~~
 sealed trait CoffeeRequest
@@ -97,6 +117,7 @@ case object CappuccinoRequest extends CoffeeRequest
 case object EspressoRequest extends CoffeeRequest
 
 import akka.actor.Actor
+
 class Barista extends Actor {
   def receive = {
     case CappuccinoRequest => println("I have to prepare a cappuccino!")
@@ -105,62 +126,100 @@ class Barista extends Actor {
 }
 ~~~
 
-First, we define the types of messages that our actor understands. Typically, case classes are used for messages sent between actors if you need to pass along any parameters. If all the actor needs is an unparameterized message, this message is typically represented as a case object – which is exactly what we are doing here.
+Мы определили несколько типов сообщений, которые принимает наш актор. 
+Обычно для передачи сообщений, которые содержат значения, между акторами используются `case`-классы. 
+Если сообщение ничего не содержит мы будем использовать `case`-объекты, как в данном примере.
 
-In any case, it’s crucial that your messages are immutable, or else bad things will happen.
+В любом случае очень важно, чтобы наши сообщения были бы неизменяемыми значениями,
+иначе могут произойти очень плохие вещи.
 
-Next, let’s have a look at our class Barista, which is the actual actor, extending the aptly named Actor trait. Said trait defines a method receive which returns a value of type Receive. The latter is really only a type alias for PartialFunction[Any, Unit].
+Давайте присмотримся к нашему классу `Barista` для описания бармена. Он наследует
+от трэйта `Actor`. Этот трэйт определяет метод `receive`, который возвращает значения
+типа `Receive`. Этот тип это просто синоним для `PartialFunction[Any, Unit]`.
 
-### Processing messages
+### Обработка сообщений
 
-So what’s the meaning of this receive method? The return type, PartialFunction[Any, Unit] may seem strange to you in more than one respect.
+Так в чём же суть метода `receive`? Тип `PartialFunction[Any, Unit]` может показаться странным сразу по нескольким причинам.
 
-In a nutshell, the partial function returned by the receive method is responsible for processing your messages. Whenever another part of your software – be it another actor or not – sends your actor a message, Akka will eventually let it process this message by calling the partial function returned by your actor’s receive method, passing it the message as an argument.
+По смыслу частично определённая функция, возвращаемая методом `receive` отвечает за обработку сообщений.
+Если к нам приходит сообщение из любой другой части приложения, будь то актор или нет, Akka 
+вызовет метод `receive`, передав сообщение в качестве аргумента.
 
-#### Side-effecting
+#### Выполнение побочных эффектов
 
-When processing a message, an actor can do whatever you want it to, apart from returning a value.
+Во время обработки сообщения актор может делать всё что угодно, кроме возвращения значения.
 
-Wat!?
+> Что за!?
 
-As the return type of Unit suggests, your partial function is side-effecting. This might come as a bit of a shock to you after we emphasized the usage of pure functions all the time. For a concurrent programming model, this actually makes a lot of sense. Actors are where your state is located, and having some clearly defined places where side-effects will occur in a controllable manner is totally fine – each message your actor receives is processed in isolation, one after another, so there is no need to reason about synchronization or locks.
+Как видно из типа метода `receive` наша частично определённая функция выполняет побочные эффекты.
+Это может отпугнуть поборников функционального программирования, ведь мы привыкли отдавать
+предпочтение чистым функциям. И это справедливо и для параллельных программ. Но наше состояние
+заключено внутри акторов и каждое сообщение обрабатывается одно за другим независимо от других акторов.
+Поэтому у нас не возникает необходимости в синхронизации процессов или семафорах. Это здорово,
+когда для побочных эффектов выделено отдельное место и они находятся под контролем. 
 
-#### Untyped
+#### Отсутствие типизации
 
-But… this partial function is not only side-effecting, it’s also as untyped as you can get in Scala, expecting an argument of type Any. Why is that, when we have such a powerful type system at our fingertips?
+Но... этп частично определённая функция не только выполняет побочные эффекты, она ещё и не типизирована
+настолько насколько это возможно в Scala. Мы можем передавать сообщения любого типа. 
+Зачем нам это нужно, если у нас под рукой есть такая мощная система типов?
 
-This has a lot to do with some important design choices in Akka that allow you to do things like forwarding messages to other actors, installing load balancing or proxying actors without the sender having to know anything about them and so on.
+Это связано с некоторыми очень важными архитектурными решениями в Akka. Благодаря
+этому мы можем перенаправлять сообщения другим акторам, управлять вычислительной нагрузкой
+или создавать прокси акторы, в тайне от отправителя сообщений и так далее.
 
-In practice, this is usually not a problem. With the messages themselves being strongly typed, you typically use pattern matching for processing those types of messages you are interested in, just as we did in our tiny example above.
+Иногда это и вправду приводит к весьма неприятным ошибкам, которые компилятор
+не способен распознать. Для того чтобы сделать передачу сообщений более безопасной,
+в ущерб некоторым возможностям нашей системы, в Akka мы можем воспользоваться экспериментальным
+типом `Channel`.
 
-Sometimes though, the weakly typed actors can indeed lead to nasty bugs the compiler can’t catch for you. If you have grown to love the benefits of a strong type system and think you don’t want to go away from that at any costs for some parts of your application, you may want to look at Akka’s new experimental Typed Channels feature.
+#### Асинхронные и неблокирующие
 
-#### Asynchronous and non-blocking
+Ранее говорилось о том, что в Akka наши акторы рано или поздно обработают
+отправленные им сообщения. Важно опнимать, что отправление сообщения и
+ приём происходят асинхронно, без блокирования потока вычислений. Отправитель
+ не будет заблокирован во время обработки сообщения. Вместо этого он продолжит
+ выполнять свою работу. Возможно отправитель хочет получить ответ от нашего актора,
+ но вполне возможно, что ответ ему совсем не важен.
 
-I wrote above that Akka would let your actor eventually process a message sent to it. This is important to keep in mind: Sending a message and processing it is done in an asynchronous and non-blocking fashion. The sender will not be blocked until the message has been processed by the receiver. Instead, they can immediately continue with their own work. Maybe they expect to get a messsage from your actor in return after a while, or maybe they are not interested in hearing back from your actor at all.
+На самом деле, когда мы отправляем сообщение, оно доставляется в почтовый ящик актора,
+который представляет собой очередь. Добавление сообщения в почтовый ящик не блокирует 
+вычисления, то есть отправитель не ждёт пока сообщение будет добавлено в очередь адресата. 
 
-What really happens when some component sends a message to an actor is that this message is delivered to the actor’s mailbox, which is basically a queue. Placing a message in an actor’s mailbox is a non-blocking operation, i.e. the sender doesn’t have to wait until the message is actually enqueued in the recipient’s mailbox.
+Обработчик событий заметит появление нового сообщения, опять же асинхронно. 
+Если актор не занимается обработкой другого сообщения, для него выделяется отдельный 
+поток, доступный в контексте вычислений. Как только актор закончит обработку предыдущего сообщения, 
+обработчик отправит ему следующее сообщение из почтового ящика.
 
-The dispatcher will notice the arrival of a new message in an actor’s mailbox, again asynchronously. If the actor is not already processing a previous message, it is now allocated to one of the threads available in the execution context. Once the actor is done processing any previous messages, the dispatcher sends it the next message from its mailbox for processing.
+Актор блокирует выделенный ему поток вычисляений до тех пор, пока не закончится обработка сообщения.
+Хотя это не скажется на отправителе, это всё же означает, что медленные операции могут затормозить
+всё приложение, поскольку для остальных акторов останется меньше потоков. 
 
-The actor blocks the thread to which it is allocated for as long as it takes to process the message. While this doesn’t block the sender of the message, it means that lengthy operations degrade overall performance, as all the other actors have to be scheduled for processing messages on one of the remaining threads.
+Поэтому необходимо как можно быстрее проводить обработку сообщений и по возможности
+стараться избегать вызовов блокирующих операций. 
 
-Hence, a core principle to follow for your Receive partial functions is to spend as little time inside them as possible. Most importantly, avoid calling blocking code inside your message processing code, if possible at all.
+Конечно мы не можем избежать возникновения таких ситуаций. Большинство драйверов для баз данных
+по-прежнему блокируют потоки вычисления, и нам скорее всего захочется пользоваться базами данных
+и в нашем приложении основанном на акторах. Эта проблема имеет решение, но мы пока не коснёмся
+его. Оно выходит за рамки ознакомительного материала.
 
-Of course, this is something you can’t prevent doing completely – the majority of database drivers nowadays is still blocking, and you will want to be able to persist data or query for it from your actor-based application. There are solutions to this dilemma, but we won’t cover them in this introductory article.
+### Создание акторов
 
-### Creating an actor
-
-Defining an actor is all well and good, but how do we actually use our Barista actor in our application? To do that, we have to create a new instance of our Barista actor. You might be tempted to do it the usual way, by calling its constructor like so:
+Пока мы научились определять акторы, но как они создаются? Как мы создадим актор для нашего 
+бармена? Для этого нам нужно создать новое значение для актора `Barista`. Возможно Вам захочется
+сделать это так:
 
 ~~~
-val barista = new Barista // will throw exception
+val barista = new Barista // приведёт к исключению
 ~~~
 
-This will not work! Akka will thank you with an ActorInitializationException. The thing is, in order for the whole actor thingie to work properly, your actors need to be managed by the ActorSystem and its components. Hence, you have to ask the actor system for a new instance of your actor:
+Но это не сработает! Akka ответит нам исключением `ActorInitializationException`. 
+Суть в том, что для успешной работы акторов, они должны управляться системой `ActorSystem`
+и её сервисами. Поэтому нам нужно создать новый актор через систему акторов:
 
 ~~~
 import akka.actor.{ActorRef, Props}
+
 val barista: ActorRef = system.actorOf(Props[Barista], "Barista")
 ~~~
 
