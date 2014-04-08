@@ -1,28 +1,58 @@
-Part 14: The Actor Approach to Concurrency
+Глава 14: Паралельные вычисления  с помощью акторов
 ==============================================================
 
-After several articles about how you can leverage the Scala type system to achieve a great amount of both flexibility and compile-time safety, we are now shifting back to a topic that we already tackled previously in this series: Scala’s take on concurrency.
+После нескольких статей о продвинутых возможностях системы типов Scala и как
+они могут быть использованы для повышения гибкости кода и стабильности за
+счёт объявления более жёстких ограничений на этапе компиляции, мы вернёмся
+к вопросу о параллельных вычислениях.  
 
-In these earlier articles, you learned about an approach that allows you to work asynchronously by making use of composable Futures.
+В прошлых статьях мы узнали как организовать асинхронные вычисления с помощью `Future`.
 
-This approach is a very good fit for numerous problems. However, it’s not the only one Scala has to offer. A second cornerstone of Scala concurrency is the Actor model. It provides an approach to concurrency that is entirely based on passing messages between processes.
+Этот способ очень хорошо подходит для решения многих проблем. Но есть и другие альтернативы. 
+Модель акторов -- это другой основополагающих подход к распараллеливанию программ. В этом
+подходе одновременно выполняющиеся процессы передают друг другу сообщения. 
 
-Actors are not a new idea – the most prominent implementation of this model can be found in Erlang. The Scala core library has had its own actors library for a long time, but it faces the destiny of deprecation in the coming Scala version 2.11, when it will ultimately be replaced by the actors implementation provided by the Akka toolkit, which has been a de-facto standard for actor-based development with Scala for quite a while.
+Идея акторов не нова. Наиболее выдающаяся реализация было сделана в языке Erlang. 
+В стандартной поставке Scala также есть своя библиотека для реализации акторов,
+но она устарела и с версии 2.11 будет окончательно заменена на реализацию акторов
+из библиотеки Akka. Эта библиотека по-сути уже давно является стандартом. 
 
-In this article, you will be introduced to the rationale behind Akka’s actor model and learn the basics of coding within this paradigm using the Akka toolkit. It is by no means an in-depth discussion of everything you need to know about Akka actors, and in that, it differs from most of the previous articles in this series. Rather, the intention is to familiarize you with the Akka mindset and serve as an initial spark to get you excited about it.
+В этой статье мы познакомимся с моделью акторов и узнаем основы применения 
+акторов в библиотеке Akka. Это лишь поверхностное знакомство, в этом настоящая статья
+отличается от предыдущих, мы сосредоточимся на том, чтобы научить думать в
+терминах Akka, изучим достаточно материала для того чтобы Вы могли заинтересоваться
+этой замечательной библиотекой. 
 
-The problems with shared mutable state
+
+Проблема общего изменяемого состояния
 -------------------------------------------------------------------
 
-The predominant approach to concurrency today is that of shared mutable state – a large number of stateful objects whose state can be changed by multiple parts of your application, each running in their own thread. Typically, the code is interspersed with read and write locks, to make sure that the state can only be changed in a controlled way and prevent multiple threads from mutating it simultaneously. At the same time, we are trying hard not to lock too big a block of code, as this can drastically slow down the application.
+На сегодняшний день доминирующий подходом к созданию параллельных программ является
+подход, основанные на общем изменяемом сотоянии (shared mutable state) -- большое
+чило объектов с состоянием выполняются в своих потоках, состояние каждого объекта 
+может быть изменено сразу в нескольких частях. Обычно код такого приложения
+насыщен семафорами, контролирующими чтение и запись, для того чтобы состояние изменялось атомарно,
+для избежания одновременного изменения состояния несколькими потоками. 
+В то же время мы стараемся не окружать семафорами слишком большие куски кода,
+поскольку это приводит к существенному снижению скорости приложения.
 
-More often than not, code like this has originally been written without having concurrency in mind at all – only to be made fit for a multi-threaded world once the need arose. While writing software without the need for concurrency like this leads to very straightforward code, adapting it to the needs of a concurrent world leads to code that is really, really difficult to read and understand.
+Очень часто такой код с самого начала пишется без учёта возможности распараллеливания.
+Параллелизация происходит по необходимости. Когда мы начинаем с последовательного
+кода всё идёт гладко, но когда мы пытаемся распараллелить его  с учётом всех потребностей
+вычислений в многопоточной среде, мы получаем код, крайне трудный для чтения, который
+очень сложно понять. 
 
-The core problem is that low-level synchronization constructs like locks and threads are very hard to reason about. As a consequence, it’s very hard to get it right: If you can’t easily reason about what’s going on, you can be sure that nasty bugs will ensue, from race conditions to deadlocks or just strange behaviour – maybe you’ll only notice after some months, long after your code has been deployed to your production servers.
+Корень проблемы в том, что такие низкоуровневые средства синхронизации вычислений
+как семафоры и потоки -- очень сложны для понимания. А следовательно, в их использовании
+очень легко ошибиться. Если вы не понимаете, что происходит в вашей системе, не сомневайтесь
+рано или поздно в ней появятся трудно уловимые ошибки, связанные с взаимной блокировкой процессов,
+или просто что-то может пойти не так. Такие ошибки могут начать проявляться после месяцев нормальной 
+работы серверов, когда вы давно установили его на боевые машины. 
 
-Also, working with these low-level constructs makes it a real challenge to achieve an acceptable performance.
+Также с этими низкоуровневыми конструкциями очень сложно добиться приемлемой эффективности.
 
-The Actor model
+
+Модель акторов
 ---------------------------------------------------------------------
 
 The Actor programming model is aimed at avoiding all the problems described above, allowing you to write highly performant concurrent code that is easy to reason about. Unlike the widely used approach of shared mutable state, it requires you to design and write your application from the ground up with concurrency in mind – it’s not really possible to add support for it later on.
