@@ -223,17 +223,30 @@ import akka.actor.{ActorRef, Props}
 val barista: ActorRef = system.actorOf(Props[Barista], "Barista")
 ~~~
 
-The actorOf method defined on ActorSystem expects a Props instance, which provides a means of configuring newly created actors, and, optionally, a name for your actor instance. We are using the simplest form of creating such a Props instance, providing the apply method of the companion object with a type parameter. Akka will then create a new instance of the actor of the given type by calling its default constructor.
+Метод `actorOf`, определённый в `ActorSystem`, ожидает значение типа `Props`, с помощью которого
+можно проводить настройку создаваемых акторов, также в методе `actorOf` мы задаём имя для актора. 
+Мы воспользовались самой простой формой создания значений типа `Props`, вызвав метод `apply` из объекта-компаньона
+с указанием типа-параметра. Akka создаст новое значение для актора, вызовом конструктора по умолчанию.
 
-Be aware that the type of the object returned by actorOf is not Barista, but ActorRef. Actors never communicate with another directly and hence there are supposed to be no direct references to actor instances. Instead, actors or other components of your application aquire references to the actors they need to send messages to.
+Обратите внимание на то, что возвращаемое из `actorOf` значение имеет тип `ActorRef` а не `Barista`.
+Акторы никогда не взаимодействуют с другими акторами напрямую. Предполагается, что у нас нет прямых
+ссылок на значения акторов. Вместо этого акторы и другие компоненты приложения передают сообщения
+с помощью ссылок на акторы.
 
-Thus, an ActorRef acts as some kind of proxy to the actual actor. This is convenient because an ActorRef can be serialized, allowing it to be a proxy for a remote actor on some other machine. For the component aquiring an ActorRef, the location of the actor – local in the same JVM or remote on some other machine – is completely transparent. We call this property location transparency.
+Так тип `ActorRef` выступает в роли прокси для настоящего актора. Это удобно, поскольку `ActorRef`
+может быть сериализован. Так мы можем передавать ссылки на акторы другим удалённым акторам, которые
+могут находиться на другом компьютере. При этом у нас есть один и тот же синтаксис для передачи
+сообщений вне зависимости от того находится ли актор на в той же JVM или на другом компьютере. 
+Мы называем это свойство прозрачностью по расположению.
 
-Please note that ActorRef is not parameterized by type. Any ActorRef can be exchanged for another, allowing you to send arbitrary messages to any ActorRef. This is by design and, as already mentioned above, allows for easily modifying the topology of your actor system wihout having to make any changes to the senders.
+Заметьте, что ссылка `ActorRef` не параметризована по типу. Все `ActorRef` равнозначны. Так
+мы можем передавать любые сообщения любому актору. Это намеренное решение. Благодаря этому
+мы можем изменять топологию системы акторов, не затрагивая те акторы, что отправляют сообщения.
 
-### Sending messages
+### Отправка сообщений
 
-Now that we have created an instance of our Barista actor and got an ActorRef linked to it, we can send it a message. This is done by calling the ! method on the ActorRef:
+Теперь когда мы научились создавать акторы и получили ссылку, которая указывает на актор
+бармена, мы можем отправить ему сообщение. Это делается вызовом метода `!` на ссылке:
 
 ~~~
 barista ! CappuccinoRequest
@@ -241,9 +254,14 @@ barista ! EspressoRequest
 println("I ordered a cappuccino and an espresso")
 ~~~
 
-Calling the ! is a fire-and-forget operation: You tell the Barista that you want a cappuccino, but you don’t wait for their response. It’s the most common way in Akka for interacting with other actors. By calling this method, you tell Akka to enqueue your message in the recipient’s mailbox. As described above, this doesn’t block, and eventually the recipient actor will process your message.
+Вызов `!` работает по принципу: отправь и забудь. Мы говорим актору, что мы хотим капучино, 
+но мы не ждём ответа. Это наиболее распространённый сценарий взаимодействия с актором в Akka.
+Вызов метода приводит к тому, что Akka добавляет сообщение в очередь почтового ящика адресата.
+Как было сказано ранее этот вызов не блокирует поток вычисления и со временем актор-адресат
+обработает наше сообщение.
 
-Due to the asynchronous nature, the result of the above code is not deterministic. It might look like this:
+В силу асинхронности вызовов, результат этого примера непредсказуем. Он может 
+выглядеть так:
 
 ~~~
 I have to prepare a cappuccino!
@@ -251,27 +269,34 @@ I ordered a cappuccino and an espresso
 Let's prepare an espresso.
 ~~~
 
-Even though we first sent the two messages to the Barista actor’s mailbox, between the processing of the first and second message, our own output is printed to the console.
+не смотря на то, что мы сначала послали два запроса, а затем вывели текст на экран.
+Наш текст может оказаться между сообщениями от актора.
 
-### Answering to messages
+### Отвечаем на сообщения
 
-Sometimes, being able to tell others what to do just doesn’t cut it. You would like to be able to answer by in turn sending a message to the sender of a message you got – all asynchronously of course.
+Иногда нам нед достаточно просто сообщтить другим о том, что делать. Нам важно уметь отправлять
+ответ именно тому кто послал нам сообщение. Конечно нам бы хотелось делать это асинхронно.
 
-To enable you to do that and lots of other things that are of no concern to us right now, actors have a method called sender, which returns the ActorRef of the sender of the last message, i.e. the one you are currently processing.
+Как раз для этого в акторах предусмотрен метод `sender`. Он возвращает `ActorRef`
+отправителя последнего сообщения, то есть того сообщение от которого мы в данный
+момент обрабатываем. 
 
-But how does it know about that sender? The answer can be found in the signature of the ! method, which has a second, implicit parameter list:
+Но как он узнает о том кто отправил сообщение? Ответ кроется во втором неявно передаваемом 
+параметре метода `!`:
 
 ~~~
 def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit
 ~~~
 
-When called from an actor, its ActorRef is passed on as the implicit sender argument.
+Когда этот метод вызывается внутри актора его ссылка передаётся в качестве неявного параметра.
 
-Let’s change our Barista so that they immediately send a Bill to the sender of a CoffeeRequest before printing their usual output to the console:
+Давайте изменим нашего бармена. Теперь он будет мгновенно отправлять посетителю счёт перед тем
+как напечатать привычный ответ:
 
 ~~~
 case class Bill(cents: Int)
 case object ClosingTime
+
 class Barista extends Actor {
   def receive = {
     case CappuccinoRequest =>
@@ -285,12 +310,14 @@ class Barista extends Actor {
 }
 ~~~
 
-While we are at it, we are introducing a new message, ClosingTime. The Barista reacts to it by shutting down the actor system, which they, like all actors, can access via their ActorContext.
+Между тем мы объявили новое сообщение `ClosingTime`. Бармен реагирует на него завершением работы системы акторов.
+Он может обратиться к ней как и любой другой актор через значеине `ActorContext` (получен вызовом метода `context`).
 
-Now, let’s introduce a second actor representing a customer:
+Теперь давайте определим второй актор представляющий покупателя:
 
 ~~~
 case object CaffeineWithdrawalWarning
+
 class Customer(caffeineSource: ActorRef) extends Actor {
   def receive = {
     case CaffeineWithdrawalWarning => caffeineSource ! EspressoRequest
@@ -299,9 +326,13 @@ class Customer(caffeineSource: ActorRef) extends Actor {
 }
 ~~~
 
-This actor is a real coffee junkie, so it needs to be able to order new coffee. We pass it an ActorRef in the constructor – for the Customer, this is simply its caffeineSource – it doesn’t know whether this ActorRef points to a Barista or something else. It knows that it can send CoffeeRequest messages to it, and that is all that matters to them.
+Этот актор -- настоящий кофейный наркоман, ему необходимо заказать новую порцию кофе.
+Мы передаём ему ссылку `ActorRef` в конструкторе. Ссылка указывает на источник кофеина.
+Актор не знает указывает ли она на бармена или на что-то ещё. Единственное что ему нужно знать -- что
+по этой ссылке он может отправлять запросы `CoffeeRequest`.
 
-Finally, we need to create these two actors and send the customer a CaffeineWithdrawalWarning to get things rolling:
+Наконеци нам нужно создать эти два актора и отправить посетителю `CaffeineWithdrawalWarning`,
+чтобы запустить процесс:
 
 ~~~
 val barista = system.actorOf(Props[Barista], "Barista")
@@ -310,57 +341,83 @@ customer ! CaffeineWithdrawalWarning
 barista ! ClosingTime
 ~~~
 
-Here, for the Customer actor, we are using a different factory method for creating a Props instance: We pass in the type of the actor we want to have instantiated as well as the constructor arguments that actor takes. We need to do this because we want to pass the ActorRef of our Barista actor to the constructor of the Customer actor.
+При создании актора для посетителя мы воспользовались другой формой вызова `Props`.
+Мы передаём тип актора и аргументы, которые принимает на вход конструктор актора.
+Так мы передаём ссылку на бармена в актор посетителя.
 
-Sending the CaffeineWithdrawalWarning to the customer makes it send an EspressoRequest to the barista who will then send a Bill back to the customer. The output of this may look like this:
+Отправление `CaffeineWithdrawalWarning` посетителю, принуждает его к отправлению `EspressoRequest`
+бармену, который в свою очередь среагирует отправкой счёта посетителю. Вывод программы может 
+выглядеть так:
 
 ~~~
 Let's prepare an espresso.
 I have to pay 200 cents, or else!
 ~~~
 
-First, while processing the EspressoRequest message, the Barista sends a message to the sender of that message, the Customer actor. However, this operation doesn’t block until the latter processes it. The Barista actor can continue processing the EspressoRequest immediately, and does this by printing to the console. Shortly after, the Customer starts to process the Bill message and in turn prints to the console.
+Сначала происходит обработка сообщения `EspressoRequest`, затем бармен отправляет сообщение отправителю
+сообщения, то есть актору посетителя. Но эта операция не блокирует вычисления, мы не ждём пока посетитель 
+среагирует на сообщение. Актор бармена может сразу обработать `EspressoRequest` и вывести на консоль
+своё сообщение. Вскоре `Customer` начинает обработку сообщения `Bill` и выводит сообщение на консоль.
 
-### Asking questions
+### Задаём вопросы
 
-Sometimes, sending an actor a message and expecting a message in return at some later time isn’t an option – the most common place where this is the case is in components that need to interface with actors, but are not actors themselves. Living outside of the actor world, they cannot receive messages.
+Иногда нам нужно отправить сообщение и дождаться ответа, обычно это происходит когда некоторым серисам
+приходится взаимодействовать с акторами, но сами они акторами не являются. Поскольку онни живут
+за пределами мира акторов, они не могут обрабатывать сообщения.
 
-For situations such as these, there is Akka’s ask support, which provides some sort of bridge between actor-based and future-based concurrency. From the client perspective, it works like this:
+Специально для таких случаев предусмотрен метод `ask`. Это мост между параллельными вычислениями,
+основанными на акторах и на `Future`. Код пользователя будет выглядеть так:
 
 ~~~
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
+
 implicit val timeout = Timeout(2.second)
 implicit val ec = system.dispatcher
+
 val f: Future[Any] = barista2 ? CappuccinoRequest
 f.onSuccess {
   case Bill(cents) => println(s"Will pay $cents cents for a cappuccino")
 }
 ~~~
 
-First, you need to import support for the ask syntax and create an implicit timeout for the Future returned by the ? method. Also, the Future needs an ExecutionContext. Here, we simply use the default dispatcher of our ActorSystem, which is conveniently also an ExecutionContext.
+Для начала нам нужно импортировать поддержку специального синтаксиса из модуля `ask` и указать неявное ограничение по времени
+для ожидания ответа при вызове `?`. Также `Future`  нуждается в контексте вычисления `ExecutionContext`. 
+В этом примере мы пользуемся контекстом из `ActorSystem`, этот тип наследует от `ExecutionContext`.
 
-As you can see, the returned future is untyped – it’s a Future[Any]. This shouldn’t come as a surprise, since it’s really a received message from an actor, and those are untyped, too.
+Как видно из примера результат не тепизирован, значение имеет тип `Future[Any]`. Не удивительно, ведь
+мы получили сообщение от актора, и они также нетпизированы. 
 
-For the actor that is being asked, this is actually the same as sending some message to the sender of a processed message. This is why asking our Barista works out of the box without having to change anything in our Barista actor.
+Актора, у которого мы спрашиваем, просто ответит отправителю через метод `sender`. 
+Вот почему, когда мы задаём вопрос к актору бармена, нам не нужно ничего менять.
 
-Once the actor being asked sends a message to the sender, the Promise belonging to the returned Future is completed.
+Как только актор, которому задали вопрос, отвечает сообщением, значение типа `Promise` принадлежащее
+`Future`, будет завершено.
 
-Generally, telling is preferable to asking, because it’s more resource-sparing. Akka is not for polite people! However, there are situations where you really need to ask, and then it’s perfectly fine to do so.
+Получается, что говорить гораздо лучше чем спрашивать. Akka -- не для вежливых людей,
+но иногда возникают ситуации, когда ответ нам очень нужен, и в Akka это предусмотрено.
 
-### Stateful actors
+### Акторы с состоянием
 
-Each actor may maintain an internal state, but that’s not strictly necessary. Sometimes, a large part of the overall application state consists of the information carried by the immutable messages passed between actors.
+Каждый актор может содержать внутреннее состояние, хотя это и не обязательно. 
+Иногда большая часть состояния приложения состоит из информации передаваемой изменяемыми
+сообщениями, которые передаются от одного актора к другому.
 
-An actor only ever processes one message at a time. While doing so, it may modify its internal state. This means that there is some kind of mutable state in an actor, but since each message is processed in isolation, there is no way the internal state of our actor can get messed up due to concurrency problems.
+Каждый актор в данный момент может обрабатывать лишь одно сообщение. При этом он
+может изменять внутреннее состояние. Это означает, что наш актор содержит некоторое изменяемое
+состояние, но поскольку каждое сообщение обрабатывается отдельно от других, целостность состояния
+не может быть нарушена. Мы свободны от проблем, которые присущи модели связанной с общим изменяемым
+состоянием.
 
-To illustrate, let’s turn our stateless Barista into an actor carrying state, by simply counting the number of orders:
+Для примера, давайте введм состояние в наш актор для бармена. Мы будем считать число 
+заказов:
 
 ~~~
 class Barista extends Actor {
   var cappuccinoCount = 0
   var espressoCount = 0
+
   def receive = {
     case CappuccinoRequest =>
       sender ! Bill(250)
@@ -375,14 +432,22 @@ class Barista extends Actor {
 }
 ~~~
 
-We introduced two vars, cappuccinoCount and espressoCount that are incremented with each respective order. This is actually the first time in this series that we have used a var. While to be avoided in functional programming, they are really the only way to allow your actors to carry state. Since each message is processed in isolation, our above code is similar to using AtomicInteger values in a non-actor environment.
+У нас появилось две изменяемые переменные: `cappuccinoCount` и `espressoCount`. 
+В этих заметках нам впервые встретились `var`-переменные! Несмотря на то, что мы
+стараемся избегать их в функциональном программировании, это единственный способ 
+определения состояния для акторов. Поскольку каждое сообщение обрабаотывается 
+отдельно от остальных, пример выше эквивалентен использованию `AtomicInteger`
+в модели не связанной с акторами.
 
-Conclusion
+Заключение
 -------------------------------------------------------
 
-And here ends our introduction to the actor programming model for concurrency and how to work within this paradigm using Akka. While we have really only scratched the surface and have ignored some important concepts of Akka, I hope to have given enough of an insight into this approach to concurrency to give you a basic understanding and get you interested in learning more.
+На этом заканчивается наше введение то как устроена модель акторов в Akka. Хотя мы затронули 
+лишь малую часть материала, я надеюсь, что мне удалось дать достаточно информации для того,
+чтобы вы поняли основные понятия и смогли самостоятельно изучить остальное.
 
-In the coming articles, I will elaborate our little example, adding some meaningful behaviour to it while introducing more of the ideas behind Akka actors, among them the question of how errors are handled in an actor system.
+В следующей статье мы разовьём наш пример и рассмотрим несколько новвых понятий из Akka,
+среди них вопрос обработки ошибок в системе акторов.
 
-P.S. Please note that starting with this article I have switched to a biweekly schedule for the remaining parts of this series.
+P.S. Обратите внимание на то, что начиная с этой главы я буду делать новые выпуски раз в две недели.
 

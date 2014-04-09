@@ -30,7 +30,7 @@
 
 * [Глава 13: Path-dependent types](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p13-path-dep-types.md)
 
-* [Глава 14: The Actor approach to concurrency](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p14-actors.md)
+* [Глава 14: Модель акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p14-actors.md)
 
 * [Глава 15: Dealing with Failure in Actor Systems](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p15-actors-failure.md)
 
