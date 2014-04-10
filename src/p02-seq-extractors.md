@@ -147,3 +147,10 @@ def greet(fullName: String) = fullName match {
 
 *Обновление, 24.01.2013: Я поправил пример для экстрактора `GivenNames`, спасибо Christophe Bliard за то, что
 указал на ошибку*. 
+
+
+--------------------------------------------------------------
+
+* <<==: [Глава 1: Экстракторы](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p01-extractors.md)
+
+* ==>>: [Глава 3: Образцы повсюду](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p03-patterns-everywhere.md)
