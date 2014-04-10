@@ -32,6 +32,6 @@
 
 * [Глава 14: Модель акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p14-actors.md)
 
-* [Глава 15: Dealing with Failure in Actor Systems](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p15-actors-failure.md)
+* [Глава 15: Обработка ошибок в системе акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p15-actors-failure.md)
 
 * [Глава 16: Что дальше?](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p16-fin.md)

@@ -266,20 +266,27 @@ def createReceipt(price: Int): Receipt = {
 о том, что с дочерним актором что-то случилось. И в этом случае у дочернего актора
 может быть несколько вариантов разрешения ситуации.
 
-### Стратегии наблюдателя
+### Стратегии супервизора
 
+Актор оповещается об исключениях, которые произошли в работе дочерних акторов,
+но не с помощью обработки специальных сообщений в функции `Receive`. Так мы бы
+смешали логику актора с логикой обработки исключений. В Akka эти части чётко разделены.
 
-The whole act of being notified about exceptions in child actors, however, is not handled by the parent actor’s Receive partial function, as that would confound the parent actor’s own behaviour with the logic for dealing with failure in its children. Instead, the two responsibilities are clearly separated.
+Каждый актор определяет стратегию супрвизора (`SupervisorStrategy`), в которой говорится о том как
+Akka должна реагировать на определённые ошибки, которые происходят в дочерних акторах.
 
-Each actor defines its own supervisor strategy, which tells Akka how to deal with certain types of errors occurring in your children.
+Есть две основные стратегии: `OneForOneStrategy` и `AllForOneStrategy`.
+Первая означает, что возникающее в некотором дочернем акторе исключение касается только
+этот актор, вторая говорит о том, что исключение затрагивает все дочерние акторы.
+Выбор стратегии зависит от приложения.
 
-There are basically two different types of supervisor strategy, the OneForOneStrategy and the AllForOneStrategy. Choosing the former means that the way you want to deal with an error in one of your children will only affect the child actor from which the error originated, whereas the latter will affect all of your child actors. Which of those strategies is best depends a lot on your individual application.
+Вне зависимости от выбранной стратегии нам также нужно задать `Decider` или частично определённую
+функцию: `PartialFunction[Throwable, Directive]`, которая ставит в соответствие исключениям директивы,
+которые говорят Akka что делать при возникновении ошибки.
 
-Regardless of which type of SupervisorStrategy you choose for your actor, you will have to specify a Decider, which is a PartialFunction[Throwable, Directive] – this allows you to match against certain subtypes of Throwable and decide for each of them what’s supposed to happen to your problematic child actor (or all your child actors, if you chose the all-for-one strategy).
+### Директивы
 
-### Directives
-
-Here is a list of the available directives:
+Список доступных директив:
 
 ~~~
 sealed trait Directive
@@ -289,17 +296,25 @@ case object Stop extends Directive
 case object Escalate extends Directive
 ~~~
 
-* Resume: If you choose to Resume, this probably means that you think of your child actor as a little bit of a drama queen. You decide that the exception was not so exceptional after all – the child actor or actors will simply resume processing messages as if nothing extraordinary had happened.
+* `Resume`: В этом случае мы считаем, что дочерний актор -- симулирует и ничего страшного не случилось. 
+    В этом случае дочерние акторы продолжут обрабатывать дальнейшие сообщения, словно ничего не случилось.
+      
+* `Restart`: Эта директива приведёт к перезапуску актора или акторов. Она применяется в том случае, если
+   мы предполагаем, что возникновение исключения нарушило внутреннее состояние актора и он нуждается в перезапуске.
+   Перезапустив актор мы надеемся на то, что он начнёт работу с нормального изначального состояния.
 
-* Restart: The Restart directive causes Akka to create a new instance of your child actor or actors. The reasoning behind this is that you assume that the internal state of the child/children is corrupted in some way so that it can no longer process any further messages. By restarting the actor, you hope to put it into a clean state again.
+* `Stop`: Мы останавливаем актор. Он не будет перезапущен.
 
-* Stop: You effectively kill the actor. It will not be restarted.
+* `Escalate`: В этом случае мы не знаем, что делать и передаём исключение следующему родительскому актору
+      в иерархии, надеясь на то, что они лучше знают что к чему. В этом случае сам родительский актор, который
+       передал исключение выше может быть перезапущен своим родительским актором. Родительский актор может
+       решать только за своих дочерних акторов.
 
-* Escalate: If you choose to Escalate, you probably don’t know how to deal with the failure at hand. You delegate the decision about what to do to your own parent actor, hoping they are wiser than you. If an actor escalates, they may very well be restarted themselves by their parent, as the parent will only decide about its own child actors.
 
-### The default strategy
+### Стратегия по умолчанию
 
-You don’t have to specify your own supervisor strategy in each and every actor. In fact, we haven’t done that so far. This means that the default supervisor strategy will take effect. It looks like this:
+Нам не нужно задавать стратегии для всех акторов. Пока мы не определяли стратегий супервизора. 
+В таком случае будет использована стратегия по умолчанию:
 
 ~~~
 final val defaultStrategy: SupervisorStrategy = {
@@ -312,28 +327,46 @@ final val defaultStrategy: SupervisorStrategy = {
 }
 ~~~
 
-This means that for exceptions other than ActorInitializationException or ActorKilledException, the respective child actor in which the exception was thrown will be restarted.
+Это означает, что для всех исключений кроме `ActorInitializationException` или `ActorKilledException`,
+соответствующий дочерний актор будет перезапущен.
 
-Hence, when a PaperJamException occurs in our Register actor, the supervisor strategy of the parent actor (the barista) will cause the Register to be restarted, because we haven’t overridden the default strategy.
+Поэтому при возникновении `PaperJamException` в нашем кассовом аппарате, стратегия супервизора (в акторе бармена)
+перезапустит актор `Register`, ведь мы не переопределили стратегию по умолчанию. 
 
-If you try this out, you will likely see an exception stacktrace in the log, but nothing about the Register actor being restarted.
+При этом мы увидим исключение в стэке вызовов в логе, но мы не заметим, что актор `Register` бы перезапущен.
 
-Let’s verify that this is really happening. To do so, however, you will need to learn about the actor lifecycle.
+Давайте проверим, что это действительно так. Но для этого нам придётся узнать о жизненном цикле актора.
 
-### The actor lifecycle
+### Жизненный цикл актора
 
-To understand what the directives of a supervisor strategy actually do, it’s crucial to know a little bit about an actor’s lifecycle. Basically, it boils down to this: when created via actorOf, an actor is started. It can then be restarted an arbitrary number of times, in case there is a problem with it. Finally, an actor can be stopped, ultimately leading to its death.
+Для того чтобы понять, что на самом деле делают директивы в стратегии супервизора, 
+необходимо немного разбираться в жизненном цикле актора. При создании в методе `actorOf`
+актор запускается. он может быть перезапущен неограниченное количество раз, если
+с ним проихойдут какие-то проблемы. И наконец, актор может быть остановлен, что ведёт 
+к его окончательной смерти.
 
-There are numerous lifecycle hook methods that an actor implementation can override. It’s also important to know their default implementations. Let’s go through them briefly:
+Есть несколько методов, которые вызываются на разных этапах жизненного цикла актора.
+Мы можем их переопределять. Также важно знать о том, как они определены по умолчанию. 
+Давайте вкратце посмотрим на них:
 
-* preStart: Called when an actor is started, allowing you to do some initialization logic. The default implementation is empty.
-* postStop: Empty by default, allowing you to clean up resources. Called after stop has been called for the actor.
-* preRestart: Called right before a crashed actor is restarted. By default, it stops all children of that actor and then calls postStop to allow cleaning up of resources.
-* postRestart: Called immediately after an actor has been restarted. Simply calls preStart by default.
+* `preStart`: Вызывается перед запуском актора, в нём мы можем выпонлить некоторую логику связанную с инициализацией.
+   Определение по умолчанию ничего не содержит.
 
-This means that by default, restarting an actor entails a restart of its children. This may be exactly what you want, depending on your specific actor and use case. If it’s not what you want, these hook methods allow you to change that behaviour.
+* `postStop`: Ничего не содержит по умолчанию. Позволяет нам освободить ресурсы. Вызывается после
+    того как для актора вызывается метод `stop`.
 
-Let’s see if our Register gets indeed restarted upon failure by simply adding some log output to its postRestart method. Make the Register type extend the ActorLogging trait and add the following method to it:
+* `preRestart`: Вызывается сразу перед перезапуском, упавшего актора. По умолчанию останавливает
+    все дочерние акторы и вызывает `postStop` для освобождения ресурсов.
+
+* `postRestart`: Вызывается сразу после перезапуска актора. По умолчанию просто вызывает `preStart`.
+
+
+Это означает, что по умолчанию перезапуск актора ведёт к перезапуску его дочерних акторов. 
+Иногда это то, что нам нужно, но если это не так мы можем изменить это поведение с помощью 
+переопределения этих методов.
+
+Давайте проверим перезапускается ли наш актор `Register`. Добавим  вывод сообщения в лог
+к методу `postRestart`. Также добавим наследование от трэйта `ActorLogging`:
 
 ~~~
 override def postRestart(reason: Throwable) {
@@ -342,11 +375,16 @@ override def postRestart(reason: Throwable) {
 }
 ~~~
 
-Now, if you send the two Customer actors a bunch of CaffeineWithdrawalWarning messages, you should see the one or the other of those log outputs, confirming that our Register actor has been restarted.
+Теперь если мы отправим двум посетителям кучу сообщений `CaffeineWithdrawalWarning`, мы обязательно
+увидим одно из этих сообщений в логах.
 
-### Death of an actor
+### Смерть актора
 
-Often, it doesn’t make sense to restart an actor again and again – think of an actor that talks to some other service over the network, and that service has been unreachable for a while. In such cases, it is a very good idea to tell Akka how often to restart an actor within a certain period of time. If that limit is exceeded, the actor is instead stopped and hence dies. Such a limit can be configured in the constructor of the supervisor strategy:
+Часто в перезапуске актора нет смысла. К примеру, если актор общается по сети с каким-нибудь сервисом
+и этот сервис в данный момент не доступен. В этом случае было бы здорово уметь рассказать Akka
+о том как часто необходимо перезапускать актор в течение некоторого времени. Если предел исчерпан,
+то актор будет остановлен, что приведёт к окончательной гибели актора. Этот предел может
+быть указан в конструкторе стратегии супервизора:
 
 ~~~
 import scala.concurrent.duration._
@@ -357,9 +395,10 @@ OneForOneStrategy(10, 2.minutes) {
 }
 ~~~
 
-### The self-healing system?
+### Теперь то мы можем восстанавливаться самостоятельно?
 
-So, is our system running smoothly, healing itself whenever this damn paper jam occurs? Let’s change our log output:
+Итак теперь наша система работает гладко и восстанавливается, когда 
+этот чёртов кассовый аппарат клинит. Но так ли это? Давайте изменим печать в логи:
 
 ~~~
 override def postRestart(reason: Throwable) {
@@ -368,7 +407,7 @@ override def postRestart(reason: Throwable) {
 }
 ~~~
 
-And while we are at it, let’s also add some more logging to our Receive partial function, making it look like this:
+Также давайте добавим печати в логи к нашей частично определённой функции `Receive`:
 
 ~~~
 def receive = {
@@ -380,9 +419,14 @@ def receive = {
 }
 ~~~
 
-Ouch! Something is clearly not as it should be. In the log, you will see the revenue increasing, but as soon as there is a paper jam and the Register actor restarts, it is reset to 0. This is because restarting indeed means that the old instance is discarded and a new one created as per the Props we initially passed to actorOf.
+Охх! Что-то явно  не так! Из логов видно, что общий счёт увеличивается
+до тех пор пока бумана не заклинивается и не происходит перезапуск актора `Register`.
+После перезапуска общий счёт снова обнуляется. Потому что перезапуск ведёт к тому, что
+прежнее значение актора отбрасывается и новое создаётся таким же способом как 
+актор был создан изначально в методе `actorOf` с помощью `Props`.
 
-Of course, we could change our supervisor strategy, so that it resumes in case of a PaperJamException. We would have to add this to the Barista actor:
+Конечно мы можем изменить стратегию супервизора так, чтобы при исключении `PaperJamException`
+мы бы продолжали работу актора:
 
 ~~~
 val decider: PartialFunction[Throwable, Directive] = {
@@ -392,25 +436,33 @@ override def supervisorStrategy: SupervisorStrategy =
   OneForOneStrategy()(decider.orElse(SupervisorStrategy.defaultStrategy.decider))
 ~~~
 
-Now, the actor is not restarted upon a PaperJamException, so its state is not reset.
+Теперь актор не перезапускается при возникновении исключения `PaperJamException`
+и состояние не обнуляется.
 
-### Error kernel
+### Ядро ошибки
 
-So we just found a nice solution to preserve the state of our Register actor, right?
+Итак мы нашли решение для нашей проблемы сохранения состояния для `Register`. Не так ли?
 
-Well, sometimes, simply resuming might be the best thing to do. But let’s assume that we really have to restart it, because otherwise the paper jam will not disappear. We can simulate this by maintaining a boolean flag that says if we are in a paper jam situation or not. Let’s change our Register like so:
+Да, но иногда, простое продолжение работы актора может оказаться не лучшим решением. Предположим,
+что нам всё-таки нужно преезапутстить актор, иначе мы не сможем убрать зажёванную бумагу. 
+Мы можем имитировать эту ситуацию с помощью дополнительного логического значения, которое говорит нам:
+произошёл ли сбой в работе кассового аппарата или нет. Давайте изменим определение для `Register`
+следующим образом:
 
 ~~~
 class Register extends Actor with ActorLogging {
   import Register._
   import Barista._
+
   var revenue = 0
   val prices = Map[Article, Int](Espresso -> 150, Cappuccino -> 250)
   var paperJam = false
+
   override def postRestart(reason: Throwable) {
     super.postRestart(reason)
     log.info(s"Restarted, and revenue is $revenue cents")
   }
+
   def receive = {
     case Transaction(article) =>
       val price = prices(article)
@@ -418,6 +470,7 @@ class Register extends Actor with ActorLogging {
       revenue += price
       log.info(s"Revenue incremented to $revenue cents")
   }
+
   def createReceipt(price: Int): Receipt = {
     import util.Random
     if (Random.nextBoolean()) paperJam = true
@@ -427,30 +480,43 @@ class Register extends Actor with ActorLogging {
 }
 ~~~
 
-Also remove the supervisor strategy we added to the Barista actor.
+Также уберём стратегию супервизора из актора `Barista`.
 
-Now, the paper jam remains forever, until we have restarted the actor. Alas, we cannot do that without also losing important state regarding our revenue.
+Теперь зажёваннапя бумага остаётся до тех пор пока мы не перезапустим актор. 
+Но мы не можем сделать этого без потери важной информации -- общего счёта.
 
-This is where the error kernel pattern comes in. Basically, it is just a simple guideline you should always try to follow, stating that if an actor carries important internal state, then it should delegate dangerous tasks to child actors, so as to prevent the state-carrying actor from crashing. Sometimes, it may make sense to spawn a new child actor for each such task, but that’s not a necessity.
+Самое время воспользоваться шаблоном "ядро ошибки" (error kernel), это
+просто рекомендация, которая говорит о том, что если актор, содержит важное состояние,
+то он должен передавать работу, которая может привести к исключениям дочерним акторам.
+Так мы предотвратим потерю состояния. Иногда имеет смысл выделять по одному дочернему 
+актору для каждой опасной задачи, но в этом нет особой необходимости.
 
-The essence of the pattern is to keep important state as far at the top of the actor hierarchy as possible, while pushing error-prone tasks as far to the bottom of the hierarchy as possible.
+Суть этого шаблона проектирования в том, чтобы держать важное состояние как можно выше
+в иерархии акторов, а задачи, которые могут приводить к ошибкам -- как можно ниже. 
 
-Let’s apply this pattern to our Register actor. We will keep the revenue state in the Register actor, but move the error-prone behaviour of printing the receipt to a new child actor, which we appropriately enough call ReceiptPrinter. Here is the latter:
+Давайте применим этот шаблон к актору `Register`. Мы будем хранить изменяемый общий счёт
+в акторе `Register`, но перенесём поведение, которое может привести к исключениям, а именно
+печать чеков, в дочерний актор, который мы так и назовём `ReceiptPrinter`. Посмотрим
+на его определение:
 
 ~~~
 object ReceiptPrinter {
   case class PrintJob(amount: Int)
   class PaperJamException(msg: String) extends Exception(msg)
 }
+
 class ReceiptPrinter extends Actor with ActorLogging {
   var paperJam = false
+
   override def postRestart(reason: Throwable) {
     super.postRestart(reason)
     log.info(s"Restarted, paper jam == $paperJam")
   }
+
   def receive = {
     case PrintJob(amount) => sender ! createReceipt(amount)
   }
+
   def createReceipt(price: Int): Receipt = {
     if (Random.nextBoolean()) paperJam = true
     if (paperJam) throw new PaperJamException("OMG, not again!")
@@ -459,23 +525,35 @@ class ReceiptPrinter extends Actor with ActorLogging {
 }
 ~~~
 
-Again, we simulate the paper jam with a boolean flag and throw an exception each time someone asks us to print a receipt while in a paper jam. Other than the new message type, PrintJob, this is really just extracted from the Register type.
+Снова мы эмитируем зажёванную бумагу с помощью логического значения и выбрасываем
+исключение каждый раз, когда кто-нибудь прсит нас о том чтобы напечатать чек, если 
+у нас есть зажёванная бумага. Почти весь код заимствован из предыдущего определения для
+`Register`. У нас только появился новый тип сообщений `PrintJob`.
 
-This is a good thing, not only because it moves away this dangerous operation from the stateful Register actor, but it also makes our code simpler and consequently easier to reason about: The ReceiptPrinter actor is responsible for exactly one thing, and the Register actor has become simpler, too, now being only responsible for managing the revenue, delegating the remaining functionality to a child actor:
+Новый вариант программы лучше не только потому, что мы вынесли
+опасную часть программы из актора, который содержит обновляемое
+состояние, но и потому, что код стал намного проще, а значит и понятнее. 
+Актор `ReceiptPrinter` отвечает только за одну задачу, также упростился
+и актор `Register`, который теперь занимается только тем, что обновляет
+общий счёт, передавая остальную часть работы дочернему актору: 
 
 ~~~
 class Register extends Actor with ActorLogging {
   import akka.pattern.ask
   import akka.pattern.pipe
   import context.dispatcher
+
   implicit val timeout = Timeout(4.seconds)
+
   var revenue = 0
   val prices = Map[Article, Int](Espresso -> 150, Cappuccino -> 250)
   val printer = context.actorOf(Props[ReceiptPrinter], "Printer")
+
   override def postRestart(reason: Throwable) {
     super.postRestart(reason)
     log.info(s"Restarted, and revenue is $revenue cents")
   }
+
   def receive = {
     case Transaction(article) =>
       val price = prices(article)
@@ -489,27 +567,50 @@ class Register extends Actor with ActorLogging {
 }
 ~~~
 
-We don’t spawn a new ReceiptPrinter for each Transaction message we get. Instead, we use the default supervisor strategy to have the printer actor restart upon failure.
+Мы не запускаем новый `ReceiptPrinter` для каждого сообщения `Transaction`. Вместо этого
+мы пользуемся стратегие по умолчанию, которая перезапускает актор только при возникновении
+неполадки.
 
-One part that merits explanation is the weird way we increment our revenue: First we ask the printer for a receipt. We map the future to a tuple containing the answer as well as the requester, which is the sender of the Transaction message and pipe this to ourselves. When processing that message, we finally increment the revenue and send the receipt to the requester.
+Следует пояснить новый способ обновления общего счёта. Сначала для получения чека мы посылаем запрос
+к `printer`. Мы преобразуем `Future` к кортежу, который содержит ответ и того кто отправил исходное
+сообщение `Transaction`. После этого мы перенаправляем этот кортеж себе. При обработке этого сообщения
+мы наконец-то можем обновить счётчик и отправить сообщение тому, кто отправил исходное сообщение. 
 
-The reason for that indirection is that we want to make sure that we only increment our revenue if the receipt was successfully printed. Since it is vital to never ever modify the internal state of an actor inside of a future, we have to use this level of indirection. It helps us make sure that we only change the revenue within the confines of our actor, and not on some other thread.
+Причина такого длинного пути заключается в том, что мы хотим завериться в успешной печати чека.
+Мы идём в обход, потому что очень важно не изменять внутреннее состояние актора в `Future`. 
+При этом мы можем быть уверены, что изменение состояния происходит в том же потоке вычисления,
+в котором выполняется сам актор. 
 
-Assigning the sender to a val is necessary for similar reasons: When mapping a future, we are no longer in the context of our actor either – since sender is a method, it would now likely return the reference to some other actor that has sent us a message, not the one we intended.
+По той же причине нам необходимо присвоить сначение `sender` некоторой переменной. 
+При вызове `map` мы больше не находимся в контексте нашего актора. Поскольку `sender`
+это метод, он скорее всего вернёт ссылку на какой-нибудь другой актор, а не на тот на который
+мы рассчитываем.
 
-Now, our Register actor is safe from constantly being restarted, yay!
+Ура! Теперь наш актор `Register` защищён от непредвиденных неполадок!
 
-Of course, the very idea of having the printing of the receipt and the management of the revenue in one place is questionable. Having them together came in handy for demonstrating the error kernel pattern. Yet, it would certainly be a lot better to seperate the receipt printing from the revenue management altogether, as these are two concerns that don’t really belong together.
+Конечно, сама идея совмещения обязанностей по печати чеков и обновлению
+общего счёта вызывает сомнения. Мы сделали это для демонстрации шаблона ядро ошибки,
+но было бы гораздо лучше разнести их, ведь они плохо сочетаются вместе.
 
-### Timeouts
+### Тайм-ауты
 
-Another thing that we may want to improve upon is the handling of timeouts. Currently, when an exception occurs in the ReceiptPrinter, this leads to an AskTimeoutException, which, since we are using the ask syntax, comes back to the Barista actor in an unsuccessfully completed Future.
+Также нам стоит задуматься о тайм-аутах. Если произойдёт тайм-аут в `ReceiptPrinter`, то
+возникнет исключение `AskTimeoutException`. Которое будет дойдёт до актора `Barista` 
+в виде неуспешно завершённого `Future`. 
 
-Since the Barista actor simply maps over that future (which is success-biased) and then pipes the transformed result to the customer, the customer will also receive a Failure containing an AskTimeoutException.
+Поскольку актор `Barista`  просто вызывает `map` на этом `Future` (который сработает только если `Future` содержит `Success`) 
+и затем перенаправляет результат (`pipeTo`) 
+посетителю, то посетитель также получит `Failure`, которое будет содержать `AskTimeoutException`.
 
-The Customer didn’t ask for anything, though, so it is certainly not expecting such a message, and in fact, it currently doesn’t handle these messages. Let’s be friendly and send customers a ComebackLater message – this is a message they already understand, and it makes them try to get an espresso at a later point. This is clearly better, as the current solution means they will never know that they will not get their espresso.
+Но посетитель ни о чём не просит, поэтому для него такое сообщение будет сущей неожиданностью.
+И на данный момент он совсем не подготовлен к таким сообщениям. Давайте будем дружелюбны к нашем
+посетителям и будем отправлять в таком случае сообщение `ComebackLater`. Они понимают такие сообщения.
+Это приведёт к тому, что они попытаются запросить чашечку эспрессо, но позже. Это гораздо лучше того,
+что у нас есть сейчас. При настоящем подходе они никогда не узнают о том, что они не смогут получить
+кофе.
 
-To achieve this, let’s recover from AskTimeoutException failures by mapping them to ComebackLater messages. The Receive partial function of our Barista actor thus now looks like this:
+Для этого давайте восстановимся после исключения `AskTimeoutException` и отобразим его в сообщение `ComebackLater`.
+Частисно определённая функция `Receive` для `Barista` примет вид:
 
 ~~~
 def receive = {
@@ -522,17 +623,31 @@ def receive = {
 }
 ~~~
 
-Now, the Customer actors know they can try their luck later, and after trying often enough, they should finally get their eagerly anticipated espresso.
+Теперь актор `Customer` узнает о том, что он может обратиться за кофе позже. Так они
+рано или поздно дождуться желаемой порции.
 
-### Death Watch
 
-Another principle that is important in order to keep your system fault-tolerant is to keep a watch on important dependencies – dependencies as opposed to children.
+### Наблюдение за гибелью акторов
 
-Sometimes, you have actors that depend on other actors without the latter being their children. This means that they can’t be their supervisors. Yet, it is important to keep a watch on their state and be notified if bad things happen.
+Другим немаловажным аспектом построения отказоустойчивых приложений является наблюдение
+за важными зависимостями -- зависимости, которые не связаны с отношением родительских
+и дочерних акторов. 
 
-Think, for instance, of an actor that is responsible for database access. You will want actors that require this actor to be alive and healthy to know when that is no longer the case. Maybe you want to switch your system to a maintenance mode in such a situation. For other use cases, simply using some kind of backup actor as a replacement for the dead actor may be a viable solution.
+Иногда в нашей системе могут быть акторы, которые зависят друг от друга, но
+не связаны отношениями прямого родства (ни один из них не является дочерним для другого). 
+Поэтому они не могут быть супервизорами. Но нам хотелось бы уметь наблюдать за
+такими акторами и иметь возможность среагировать, если с ними случится что-то плохое.
 
-In any case, you will need to place a watch on an actor you depend on in order to get the sad news of its passing away. This is done by calling the watch method defined on ActorContext. To illustrate, let’s have our Customer actors watch the Barista – they are highly addicted to caffeine, so it’s fair to say they depend on the barista:
+Представьте актор, который отвечает за доступ к базе данных. Нам бы хотелось
+знать о том, что с этим актором всё в порядке из других акторов приложения, которые
+могут в нём нуждаться. Возможно нам захочется переключиться в режим утсранения неполадок,
+если с этим актором что-то случится. В других ситуациях мы могли бы запускать запасной актор
+вместо вышедшего из строя.
+
+В любом случае нам нужно уметь наблюдать за гибелью актора. Можно сделать это вызовом
+метода `watch`, который определён на `ActorContext`. Давайте будем наблюдать из `Customer`
+за актором `Barista`, наши посетители сильно нуждаются в кофе, поэтому вполне оправдано 
+заключить, что они зависят от него:
 
 ~~~
 class Customer(coffeeSource: ActorRef) extends Actor with ActorLogging {
@@ -555,16 +670,24 @@ class Customer(coffeeSource: ActorRef) extends Actor with ActorLogging {
 }
 ~~~
 
-We start watching our coffeeSource in our constructor, and we added a new case for messages of type Terminated – this is the kind of message we will receive from Akka if an actor we watch dies.
+Мы начинаем наблюдать за `coffeeSource`, также мы добавили ещё одну `case`-альтернативу 
+с сообщением `Terminated`, мы получим это сообщение от Akka, в случае гибели актора, за которым мы следим.
 
-Now, if we send a ClosingTime to the message and the Barista tells its context to stop itself, the Customer actors will be notified. Give it a try, and you should see their output in the log.
+Теперь, если мы отправим сообщение `ClosingTime` и `Barista` остановит себя, актор посетителя `Customer`
+будет оповещён. Убедитесь в этом -- запустите программу и посмотрите в логи.
 
-Instead of simply logging that we are not amused, this could just as well initiate some failover logic, for instance.
+Вместо того, чтобы выразить наше недовольствов логах, мы могли бы запустить какой-нибудь
+процесс восстановления или что-то ещё.
 
-Summary
---------------------------------------------------------
+Итоги
+-------------------------------------------------------
 
-In this part of the series, which is the second one dealing with actors and Akka, you got to know some of the important components of an actor system, all while learning how to put the tools provided by Akka and the ideas behind it to use in order to make your system more fault-tolerant.
+Во второй части нашего рассказа об Akka узнали о важных компонентах системы акторов.
+Мы узнали о тех возможностях, что предлагает нам Akka, для повышения отказоустойчивости системы.
 
-While there is still a lot more to learn about the actor model and Akka, we shall leave it at that for now, as this would go beyond the scope of this series. In the next part, which shall bring this series to a conclusion, I will point you to a bunch of Scala resources you may want to peruse to continue your journey through Scala land, and if actors and Akka got you excited, there will be something in there for you, too.
-
+Несмотря на то, что для нас осталось много неизвестного в Akka, нам всё же
+придётся закруглиться, поскольку дальнейшее изучение Akka выходит за рамки 
+этого пособия. В следующей, заключительной, статье мы подведём итоги и я
+покажу вам много ссылок на полезные материалы для дальнейшего путешествия 
+по миру Scala. Там будет кое-что интересное и для тех, кто всерьёз заинтересовался
+Akka.
