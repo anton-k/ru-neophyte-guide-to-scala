@@ -389,3 +389,5 @@ val resource = resourceFromConfigDir orElse resourceFromClasspath
 * <= [Глава 4: Сопоставление с образцом в анонимных функциях](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p04-patterns-for-anonymous-func.md)
 
 * => [Глава 6: Обработка исключений с помощью Try](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p06-error-handling.md)
+
+* [Содержание](https://github.com/anton-k/ru-neophyte-guide-to-scala#%D0%9F%D1%83%D1%82%D0%B5%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C-%D0%BD%D0%B5%D0%BE%D1%84%D0%B8%D1%82%D0%B0-%D0%BF%D0%BE-scala)
