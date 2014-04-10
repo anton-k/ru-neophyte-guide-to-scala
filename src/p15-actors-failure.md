@@ -691,3 +691,9 @@ class Customer(coffeeSource: ActorRef) extends Actor with ActorLogging {
 покажу вам много ссылок на полезные материалы для дальнейшего путешествия 
 по миру Scala. Там будет кое-что интересное и для тех, кто всерьёз заинтересовался
 Akka.
+
+----------------------------------------------------
+
+* <= [Глава 14: Модель акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p14-actors.md)
+
+* => [Глава 16: Что дальше?](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p16-fin.md)

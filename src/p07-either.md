@@ -377,3 +377,10 @@ val problemCitizens = checkedBlacklist.flatMap(_.right.toOption).flatten.toSet
 нам важно знать и об этом типе. Могут случиться и ситуации, в которых он станет вашим 
 незаменимым помошником, а также это полезно для понимания кода Scala для версий ниже 2.10,
 там где он использовался для обработки исключений.
+
+
+----------------------------------------------------
+
+* <= [Глава 6: Обработка исключений с помощью Try](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p06-error-handling.md)
+
+* => [Глава 8: Добро пожаловать в будущее](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p08-future.md)

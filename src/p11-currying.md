@@ -298,3 +298,9 @@ object MailboxServiceWithMockDeps extends MailboxService {
 оказаться более элегантной.
 
 В следующей статье мы узнаем как повысить гибкость кода с помощью классов типов.
+
+----------------------------------------------------
+
+* <= [Глава 10: Не повторяемся вместе с функциями высшего порядка](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p10-hof.md)
+
+* => [Глава 12: Классы типов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p12-type-classes.md)

@@ -370,3 +370,9 @@ def prepareCappuccino(): Future[Cappuccino] = {
 что когда-нибудь вернём значение. На языке Scala это означает, создать значение типа `Promise`,
 которое завершится в будущем (создаст значение в типе `Future`). Об этом мы и поговорим в следующей статье.
 
+
+----------------------------------------------------
+
+* <= [Глава 7: Тип Either](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p07-either.md)
+
+* => [Глава 9: Типы Promise и Future на практике](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p09-promises-and-futures.md)

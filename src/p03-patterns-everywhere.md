@@ -191,3 +191,9 @@ for {
 статьи. Она слишком велика, но мы вернёмся к ней уже в следующей статье.
 
 *Обновление: Исправлена ошибка в результате выражения `hallOfFame`. Спасибо Rajiv за правку.*
+
+--------------------------------------------------------------
+
+* <= [Глава 2: Извлекаем коллекции значений](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p02-seq-extractors.md)
+
+* => [Глава 4: Сопоставление с образцом в анонимных функциях](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p04-patterns-for-anonymous-func.md)

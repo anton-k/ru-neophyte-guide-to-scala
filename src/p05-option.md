@@ -383,3 +383,9 @@ val resource = resourceFromConfigDir orElse resourceFromClasspath
 способ работы с коллекциями, общий для списков, множеств, ассоциативных массивов,
 неопределённых значений и для многих других типов, о чём вы узнаете из следующих статей.
 
+
+----------------------------------------------------
+
+* <= [Глава 4: Сопоставление с образцом в анонимных функциях](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p04-patterns-for-anonymous-func.md)
+
+* => [Глава 6: Обработка исключений с помощью Try](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p06-error-handling.md)

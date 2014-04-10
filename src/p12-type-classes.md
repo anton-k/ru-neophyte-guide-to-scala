@@ -258,3 +258,9 @@ Scala type classes allow you to develop your Scala code in such a way that it’
 
 You will see that this technique is especially useful when writing libraries intended to be used by others, but type classes also have their use in application code to decrease coupling between modules.
 
+
+----------------------------------------------------
+
+* <= [Глава 11: Каррирование и частичное применение](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p11-currying.md)
+
+* => [Глава 13: Path-dependent types](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p13-path-dep-types.md)

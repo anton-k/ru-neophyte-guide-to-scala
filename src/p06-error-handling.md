@@ -281,3 +281,9 @@ val content = getURLContent("garbage") recover {
 которые могут завершиться с ошибкой. Тип `Either` -- гораздо более общий, сфера его применения
  е ограничивается обработкой исключений.
 
+
+----------------------------------------------------
+
+* <= [Глава 5: Тип Option](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p05-option.md)
+
+* => [Глава 7: Тип Either](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p07-either.md)

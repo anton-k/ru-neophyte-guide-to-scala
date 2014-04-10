@@ -26,7 +26,7 @@
 
 * [Глава 11: Каррирование и частичное применение](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p11-currying.md)
 
-* [Глава 12: Type classes](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p12-type-classes.md)
+* [Глава 12: Классы типов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p12-type-classes.md)
 
 * [Глава 13: Path-dependent types](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p13-path-dep-types.md)
 

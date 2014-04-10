@@ -271,3 +271,9 @@ val handler = fooHandler orElse barHandler orElse bazHandler
 на уровне архитектурных решений. 
 
 В следующей статье мы продолжим изучение композиции функций. Мы рассмотрим частичное применение функций и каррирование.
+
+----------------------------------------------------
+
+* <= [Глава 9: Типы Promise и Future на практике](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p09-promises-and-futures.md)
+
+* => [Глава 11: Каррирование и частичное применение](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p11-currying.md)

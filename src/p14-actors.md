@@ -450,3 +450,9 @@ class Barista extends Actor {
 В следующей статье мы разовьём наш пример и рассмотрим несколько новых понятий из Akka,
 среди них вопрос обработки ошибок в системе акторов.
 
+
+----------------------------------------------------
+
+* <= [Глава 13: Path-dependent types](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p13-path-dep-types.md)
+
+* => [Глава 15: Обработка ошибок в системе акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p15-actors-failure.md)

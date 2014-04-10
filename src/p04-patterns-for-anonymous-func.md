@@ -179,3 +179,9 @@ def wordsWithoutOutliers(wordFrequencies: Seq[(String, Int)]): Seq[String] =
 
 Следующая статья будет посвящена вездесущему типу `Option`. Мы узнаем зачем он нужен
 и как пользоваться им наилучшим образом.
+
+----------------------------------------------------
+
+* <= [Глава 3: Образцы повсюду](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p03-patterns-everywhere.md)
+
+* => [Глава 5: Тип Option](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p05-option.md)

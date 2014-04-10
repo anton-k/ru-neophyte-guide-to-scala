@@ -208,8 +208,9 @@ In general, whenever you want to make sure that objects created or managed by a 
 Path-dependent types and dependent method types play a crucial role for attempts to encode information into types that is typically only known at runtime, for instance heterogenous lists, type-level representations of natural numbers and collections that carry their size in their type. Miles Sabin is exploring the limits of Scala’s type system in this respect in his excellent library Shapeless.
 
 
-	
+----------------------------------------------------
 
+* <= [Глава 12: Классы типов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p12-type-classes.md)
 
-
+* => [Глава 14: Модель акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p14-actors.md)
 
