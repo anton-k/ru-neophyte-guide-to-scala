@@ -214,3 +214,4 @@ Path-dependent types and dependent method types play a crucial role for attempts
 
 * => [Глава 14: Модель акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p14-actors.md)
 
+* [Содержание](https://github.com/anton-k/ru-neophyte-guide-to-scala)
