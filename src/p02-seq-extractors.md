@@ -151,6 +151,6 @@ def greet(fullName: String) = fullName match {
 
 --------------------------------------------------------------
 
-* <<==: [Глава 1: Экстракторы](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p01-extractors.md)
+* Пред [Глава 1: Экстракторы](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p01-extractors.md)
 
-* ==>>: [Глава 3: Образцы повсюду](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p03-patterns-everywhere.md)
+* След [Глава 3: Образцы повсюду](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p03-patterns-everywhere.md)
