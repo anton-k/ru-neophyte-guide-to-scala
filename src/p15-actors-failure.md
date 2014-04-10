@@ -1,105 +1,156 @@
-Part 15: Dealing With Failure in Actor Systems
+Глава 15: Обработка ошибок в системе акторов
 =====================================================================
 
-In the previous part of this series, I introduced you to the second cornerstone of Scala concurrency: The actor model, which complements the model based on composable futures backed by promises. You learnt how to define and create actors, how to send messages to them and how an actor processes these messages, possibly modifying its internal state as a result or asynchronously sending a response message to the sender.
+В предыдущей главе мы познакомились с моделью акторов -- вторым основопологающим понятием
+параллельных вычислений. Она дополняет модельоснованную на компануемых асинхронных 
+вычислениях (`Future` и `Promise`). Мы узнаели как акторы определяются, как отправлять
+актору сообщения, как сообщения  обрабатываются, как актор может обновлять изменяемое
+состояние при обработке сообщений или отправлять ответное сообщение отправитею сообщения.
 
-While that was hopefully enough to get you interested in the actor model for concurrency, I left out some crucial concepts you will want to know about before starting to develop actor-based applications that consist of more than a simple echo actor.
+Надеюсь этого материала было вполне достаточно для того, чтобы заинтересовать вас
+моделью акторов. Но мы не конснулись ряда ключевых понятий, необходимых для построения
+более менеее серьёзных приложений, основанных на акторах. 
 
-The actor model is meant to help you achieve a high level of fault tolerance. In this article, we are going to have a look at how to deal with failure in an actor-based application, which is fundamentally different from error handling in a traditional layered server architecture.
+Модель акторов предназначена для построения отказоустойчивых приложений. 
+в этой статье мы посмотрим как реагировать на ошибки в приложениях,
+основанных на акторах. Обработка ошибок в системах акторов сильно отличается
+от традиционного подхода, принятого при построении серверов.
 
-The way you deal with failure is closely linked to some core Akka concepts and to some of the elements an actor system in Akka consists of. Hence, this article will also serve as a guide to those ideas and components.
+Способ обработки ошибок тесно связан с понятиями Akka и некоторыми элементами,
+из которых состоит система акторов в Akka. Поэтому в данной статье мы продолжим 
+изучение реализации модели акторов в Akka.
 
-Actor hierarchies
+Иерархии акторов
 -----------------------------------------------------------------------
 
-Before going into what happens when an error occurs in one of your actors, it’s essential to introduce one crucial idea underlying the actor approach to concurrency – an idea that is the very foundation for allowing you to build fault-tolerant concurrent applications: Actors are organized in a hierarchy.
+Перед тем как обратиться к тому, что происходит когда возникает ошибка, 
+необходимо усвоить одно из ключевых понятий в модели акторов. Это понятие
+лежит в основе построения отказоустойчивых приложений. Акторы образуют
+иерархии.
 
-So what does this mean? First of all, it means that every single of your actors has got a parent actor, and that each actor can create child actors. Basically, you can think of an actor system as a pyramid of actors. Parent actors watch over their children, just as in real life, taking care that they get back on their feet if they stumble. You will see shortly how exactly this is done.
+Но что это значит? Во первых, это означает что у каждого актора есть актор-родитель, 
+и каждый актор может создавать дочерние акторы. Родительские акторы наблюдают за своими детьми,
+точно так же как и в настоящей жизни. Они заботятся о них, помогают им подняться на ноги, 
+если они споткнутся. Вскоре мы узнаем как это происходит.
 
-### The guardian actor
+### Актор-охранник
 
-In the previous article, we only had two different actors, a Barista actor and a Customer actor. I will not repeat their rather trivial implementations, but focus on how we created instances of these actor types:
+В прошлой статье мы успели определить два актора -- для бармена и посетителя. 
+Я не буду повторять определения. Они очень простые, давайте сосредоточимся
+на том, как создавались значения для акторов:
 
 ~~~
 import akka.actor.ActorSystem
+
 val system = ActorSystem("Coffeehouse")
 val barista = system.actorOf(Props[Barista], "Barista")
 val customer = system.actorOf(Props(classOf[Customer], barista), "Customer")
 ~~~
 
-As you can see, we create these two actors by calling the actorOf method defined on the ActorSystem type.
+Мы создаём два актора вызовом метода `actorOf`, что определён на значении типа `ActorSystem`.
 
-So what is the parent of these two actors? Is it the actor system? Not quite, but close. The actor system is not an actor itself, but it has got a so-called guardian actor that serves as the parent of all root-level user actors, i.e. actors we create by calling actorOf on our actor system.
+Кто является родителем для этих двух акторов? Система акторов? Не совсем верно, но близко. 
+Система акторов сама не является актором, но в ней определён так называемы *актор-охранник*
+(guardian actor), который является родителем для всех корневых акторов, то есть тех, которыx 
+мы создаём вызовом метода `actorOf` на `ActorSystem`.
 
-There shouldn’t be a whole lot of actors in your system that are children of the guardian actor. It really makes more sense to have only a few top-level actors, each of them delegating most of the work to their children.
+В нашей системе должно быть совсем немного таких акторов. Оправдано иметь лишь несколько
+корневых акторов, каждый из которых делегирует большую часть своей работы дочерним акторам.
 
-### Actor paths
+### Пути для акторов
 
-The hierarchical structure of an actor system becomes apparent when looking at the actor paths of the actors you create. These are basically URLs by which actors can be addressed. You can get an actor’s path by calling path on its ActorRef:
+Иерархическая структура системы акторов становится очевидной, если мы взглянем на пути
+для созданных акторов. Пути -- это по сути URL для акторов, по которым мы можем ссылаться
+на акторы. Мы можем получить путь к актору вызовом метода `path` на его ссылке `ActorRef`:
 
 ~~~
 barista.path // => akka.actor.ActorPath = akka://Coffeehouse/user/Barista
 customer.path // => akka.actor.ActorPath = akka://Coffeehouse/user/Customer
 ~~~
 
-The akka protocol is followed by the name of our actor system, the name of the user guardian actor and, finally, the name we gave our actor when calling actorOf on the system. In the case of remote actors, running on different machines, you would additionally see a host and a port.
+За протоколом `akka` следует имя нашей системы акторов, потом имя пользовательского 
+актора-охранника, и наконец имя, которое мы дали актору при создании, в вызове `actorOf`.
+В случае распределённых систем для акторов, работающих на удалённых машинах
+мы увидим имя хоста и порт. 
 
-Actor paths can be used to look up another actor. For example, instead of requiring the barista reference in its constructor, the Customer actor could call the actorSelection method on its ActorContext, passing in a relative path to retrieve a reference to the barista:
+Пути к акторам могут быть использованы для поиска акторов. к примеру вместо того, чтобы
+передать `Customer` ссылку на актор бармена, мы могли бы найти этот актор вызовом метода
+`actorSelection` на `ActorContext`, передав путь в качестве аргумента:
 
 ~~~
 context.actorSelection("../Barista")
 ~~~
 
-However, while being able to look up an actor by its path can sometimes come in handy, it’s often a much better idea to pass in dependencies in the constructor, just as we did before. Too much intimate knowledge about where your dependencies are located in the actor system makes your system more susceptible to bugs, and it will be difficult to refactor later on.
+Однако лучше передать зависимость от актора в конструктор посетителя, так как
+мы делали это раньше. Зависимость от зашитых в код путей к акторам может
+привести к возникновению багов, и такой код гораздо труднее изменять.
 
-### An example hierarchy
+### Пример иерархии
 
-To illustrate how parents watch over their children and what this has got to do with keeping your system fault-tolerant, I’m going to stick to the domain of the coffeehouse. Let’s give the Barista actor a child actor to which it can delegate some of the work involved in running a coffeehouse.
+Давайте разовьёв наш пример с кафетерием, для того чтобы разбераться как родительские 
+акторы могут следить за дочерними и как это может помочь нам в повышении отказоустойчивости 
+приложения. Определим дочерний актор для бармена, теперь бармен сможет передать часть
+работы своему дочернему актору.
 
-If we really were to model the work of a barista, we were likely giving them a bunch of child actors for all the various subtasks. But to keep this article focused, we have to be a little simplistic with our example.
+Нам следовало бы определить сразу несколько дочерних акторов под разные задачи бармена,
+но мы не будем распыляться и немного упростим нашу модель.
 
-Let’s assume that the barista has got a register. It processes transactions, printing appropriate receipts and incrementing the day’s sales so far. Here is a first version of it:
+
+Предположим что в баре есть кассовый аппарат (`Register`), который  создаёт чеки и 
+обновляет счётчик общих продаж за день. Вот пробная версия такого актора:
 
 ~~~
 import akka.actor._
+
 object Register {
   sealed trait Article
   case object Espresso extends Article
   case object Cappuccino extends Article
   case class Transaction(article: Article)
 }
+
 class Register extends Actor {
   import Register._
   import Barista._
+
   var revenue = 0
   val prices = Map[Article, Int](Espresso -> 150, Cappuccino -> 250)
+
   def receive = {
     case Transaction(article) =>
       val price = prices(article)
       sender ! createReceipt(price)
       revenue += price
   }
+
   def createReceipt(price: Int): Receipt = Receipt(price)
 }
 ~~~
 
-It contains an immutable map of the prices for each article, and an integer variable representing the revenue. Whenever it receives a Transaction message, it increments the revenue accordingly and returns a printed receipt to the sender.
+Он содержит неизменяемый ассоциативный массив для цен по каждому товару и переменную,
+которая обозначает общий доход. Как только он получает сообщение `Transaction`,
+он обновляет счётчик дохода и возвращает чек отправителю.
 
-The Register actor, as already mentioned, is supposed to be a child actor of the Barista actor, which means that we will not create it from our actor system, but from within our Barista actor. The initial version of our actor-come-parent looks like this:
+Актор `Register` будет дочерним актором бармена, поэтому мы создадим его
+не из системы акторов, а из актора `Barista`. Исходная версия нашего родительского
+актора выглядит так:
 
 ~~~
 object Barista {
   case object EspressoRequest
   case object ClosingTime
   case class EspressoCup(state: EspressoCup.State)
+
   object EspressoCup {
     sealed trait State
     case object Clean extends State
     case object Filled extends State
     case object Dirty extends State
   }
+
   case class Receipt(amount: Int)
 }
+
 class Barista extends Actor {
   import Barista._
   import Register._
@@ -111,7 +162,9 @@ class Barista extends Actor {
   import concurrent.duration._
 
   implicit val timeout = Timeout(4.seconds)
+
   val register = context.actorOf(Props[Register], "Register")
+
   def receive = {
     case EspressoRequest =>
       val receipt = register ? Transaction(Espresso)
@@ -121,18 +174,30 @@ class Barista extends Actor {
 }
 ~~~
 
-First off, we define the message types that our Barista actor is able to deal with. An EspressoCup can have one out of a fixed set of states, which we ensure by using a sealed trait.
+Сначала мы определили тип сообщений для нашего бармена. Чашка эсспрессо `EspressoCup`
+может быть в одном из состояний, этот набор зафиксирован с помощью ключевого слова `sealed`. 
 
-The more interesting part is to be found in the implementation of the Barista class. The dispatcher, ask, and pipe imports as well as the implicit timeout are required because we make use of Akka’s ask syntax and futures in our Receive partial function: When we receive an EspressoRequest, we ask the Register actor for a Receipt for our Transaction. This is then combined with a filled espresso cup and piped to the sender, which will thus receive a tuple of type (EspressoCup, Receipt). This kind of delegating subtasks to child actors and then aggregating or amending their work is typical for actor-based applications.
+Но посмотрим, что происходит в классе `Barista`. Мы импортировали `dispatcher`, `ask` и `pipe`,
+объявили неявную переменную `timeout`, потому что мы пользуемся синхронным обменом
+сообщений с помощью `?`. Как только мы получаем `EspressoRequest`, мы спрашиваем у нашего
+актора чек, отправив сообщение `Transaction`. Затем мы наливаем эспрессо в чашку, присоединяем
+чек и перенаправляем отправителю заказа. Он получит пару `(EspressoCup, Receipt)`. 
+Мы рассмотрели довольно типичный сценарий для приложений основанных на акторах. 
+В акторе мы распределили обязанности между дочерними акторами и затем собрали полученне
+данные.
 
-Also, note how we create our child actor by calling actorOf on our ActorContext instead of the ActorSystem. By doing so, the actor we create becomes a child actor of the one who called this method, instead of a top-level actor whose parent is the guardian actor.
+Также обратите внимание на то, как мы создали дочерний актор вызовом `actorOf` на `ActorContext`
+вместо `ActorSystem`. После этого созданный актор становится дочерним для того актора, который
+вызвал метод `actorOf` на своём контексте, а не корневым актором, для которого родителем является
+актор-охранник.
 
-Finally, here is our Customer actor, which, like the Barista actor, will sit at the top level, just below the guardian actor:
+Наконец определим актор для посетителя `Customer`. Он является корневым также как и актор бармена:
 
 ~~~
 object Customer {
   case object CaffeineWithdrawalWarning
 }
+
 class Customer(coffeeSource: ActorRef) extends Actor with ActorLogging {
   import Customer._
   import Barista._
@@ -145,35 +210,44 @@ class Customer(coffeeSource: ActorRef) extends Actor with ActorLogging {
 }
 ~~~
 
-It is not terribly interesting for our tutorial, which focuses more on the Barista actor hierarchy. What’s new is the use of the ActorLogging trait, which allows us to write to the log instead of printing to the console.
+Это определение не так интересно для рассматриваемых в данной главе вопросов. 
+Стоит обратить внимание на лишь на то, как мы воспользвались трэйтом `ActorLogging`.
+Он позволяет нам писать сообщения в лог вместо консоли.
 
-Now, if we create our actor system and populate it with a Barista and two Customer actors, we can happily feed our two under-caffeinated addicts with a shot of black gold:
+Теперь если мы создадим систему акторов с барменом и двумя посетителями, мы можем
+напоить двух наших кофеманов, чашечкой чёрного золота: 
 
 ~~~
 import Customer._
+
 val system = ActorSystem("Coffeehouse")
+
 val barista = system.actorOf(Props[Barista], "Barista")
 val customerJohnny = system.actorOf(Props(classOf[Customer], barista), "Johnny")
 val customerAlina = system.actorOf(Props(classOf[Customer], barista), "Alina")
+
 customerJohnny ! CaffeineWithdrawalWarning
 customerAlina ! CaffeineWithdrawalWarning
 ~~~
 
-If you try this out, you should see two log messages from happy customers.
+После запуска этого примера Вы увидете два сообщения в логе от
+двух радостных посетителей.
 
 
-To crash or not to crash?
+Падать или не падать?
 --------------------------------------------------------------
 
-Of course, what we are really interested in, at least in this article, is not happy customers, but the question of what happens if things go wrong.
+Но в этой статье мы заинтересованы совсем не в радостных посетителях, нам интересно узнать,
+что происходит, когда что-то идёт не так.
 
-Our register is a fragile device – its printing functionality is not as reliable as it should be. Every so often, a paper jam causes it to fail. Let’s add a PaperJamException type to the Register companion object:
+Наш кассовый аппарат не так надёжен как нам бы хотелось. Он может зажевать бумагу.
+Давайте добавим исключение для этого случая, в объект-компаньон для `Register`:
 
 ~~~
 class PaperJamException(msg: String) extends Exception(msg)
 ~~~
 
-Then, let’s change the createReceipt method in our Register actor accordingly:
+Теперь давайте изменим метод `createReceipt` в нашем акторе `Register`:
 
 ~~~
 def createReceipt(price: Int): Receipt = {
@@ -184,11 +258,16 @@ def createReceipt(price: Int): Receipt = {
 }
 ~~~
 
-Now, when processing a Transaction message, our Register actor will throw a PaperJamException in about half of the cases.
+Теперь при обработке сообщения `Transaction`, наш актор `Register` будет выдавать
+исключение в половине случаев.
 
-What effect does this have on our actor system, or on our whole application? Luckily, Akka is very robust and not affected by exceptions in our code at all. What happens, though, is that the parent of the misbehaving child is notified – remember that parents are watching over their children, and this is the situation where they have to decide what to do.
+Как это скажется на нашей системе акторов? К счастью Akka -- очень надёжна, исключения
+не приведут к падению приложения, вместо этого дочерний актор будет оповещён
+о том, что с дочерним актором что-то случилось. И в этом случае у дочернего актора
+может быть несколько вариантов разрешения ситуации.
 
-### Supervisor strategies
+### Стратегии наблюдателя
+
 
 The whole act of being notified about exceptions in child actors, however, is not handled by the parent actor’s Receive partial function, as that would confound the parent actor’s own behaviour with the logic for dealing with failure in its children. Instead, the two responsibilities are clearly separated.
 
