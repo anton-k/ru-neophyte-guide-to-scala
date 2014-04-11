@@ -78,7 +78,7 @@ def advance(xs: List[User]) = xs match {
 распространённого. Давайте представим, что наш класс `User` совсем не `case`-класс, а
 трэйт (trait) с двумя классами, наследующими от него. Пока он содержит всего одно поле:
 
-~~~
+~~~scala
 trait User {
   def name: String
 }
@@ -91,7 +91,7 @@ class PremiumUser(val name: String) extends User
 в точности так как это сделал бы за нас компилятор Scala, если бы мы определили наши классы с помощью `case`.
 Если экстрактор извлекает всего одно значение, сигнатура метода `unapply` выглядит так:
 
-~~~
+~~~scala
 def unapply(object: S): Option[T]
 ~~~
 
@@ -103,7 +103,7 @@ def unapply(object: S): Option[T]
 
 Вот и наши экстракторы:
 
-~~~
+~~~scala
 trait User {
   def name: String
 }
@@ -121,7 +121,7 @@ object PremiumUser {
 
 Теперь попробуем в интерпретаторе:
 
-~~~
+~~~scala
 scala> FreeUser.unapply(new FreeUser("Daniel"))
 res0: Option[String] = Some(Daniel)
 ~~~
@@ -135,7 +135,7 @@ res0: Option[String] = Some(Daniel)
 
 Давайте воспользуемся нашими экстракторами в сопоставлении с образцом:
 
-~~~
+~~~scala
 val user: User = new PremiumUser("Daniel")
 
 user match {
@@ -165,7 +165,7 @@ user match {
 
 Пусть теперь  у нашего класса есть несколько полей:
 
-~~~
+~~~scala
 trait User {
   def name: String
   def score: Int
@@ -180,7 +180,7 @@ class PremiumUser(val name: String, val score: Int) extends User
 Если экстрактор возвращает несколько значений, сигнатура метода `unapply` 
 выглядит так:
 
-~~~
+~~~scala
 def unapply(object: S): Option[(T1, ..., Tn)]
 ~~~
 
@@ -189,7 +189,7 @@ def unapply(object: S): Option[(T1, ..., Tn)]
 
 Давайте перепишем наши экстракторы:
 
-~~~
+~~~scala
 trait User {
   def name: String
   def score: Int
@@ -213,7 +213,7 @@ object PremiumUser {
 Теперь мы можем воспользоваться этим экстрактором при сопастовлении с образцом,
 точно так же как и в предыдущем примере:
 
-~~~
+~~~scala
 val user: User = new FreeUser("Daniel", 3000, 0.7d)
 
 user match {
@@ -231,7 +231,7 @@ user match {
 третий (и последний) вариант метода `unapply`. Он принимает значение типа `S`
 и возвращает `Boolean`:
 
-~~~
+~~~scala
 def unapply(object: S): Boolean
 ~~~
 
@@ -242,7 +242,7 @@ def unapply(object: S): Boolean
 возможности обновления учётной записи пользователя. Давайте перенесём эту логику
 в отдельный экстрактор:
 
-~~~
+~~~scala
 object premiumCandidate {
   def unapply(user: FreeUser): Boolean = user.upgradeProbability > 0.75
 }
@@ -253,7 +253,7 @@ object premiumCandidate {
 Теперь мы можем с лёгкостью воспользоваться этим экстрактором при сопоставлении
 с образцом:
 
-~~~
+~~~scala
 val user: User = new FreeUser("Daniel", 2500, 0.8d)
 
 user match {
@@ -287,7 +287,7 @@ user match {
 списков и потоков почти точно так же как и строить их, с помощью операторов
 с двоеточием: соответственно `::` и `#::`:
 
-~~~
+~~~scala
 val xs = 58 #:: 43 #:: 93 #:: Stream.empty
 
 xs match {
@@ -315,7 +315,7 @@ xs match {
 
 Вот как экстрактор определён в исходном коде Scala 2.9.2:
 
-~~~
+~~~scala
 object #:: {
   def unapply[A](xs: Stream[A]): Option[(A, Stream[A])] =
     if (xs.isEmpty) None
@@ -331,7 +331,7 @@ object #:: {
 
 Давайте перепишем наш пример в обычной (префиксной) записи, для того чтобы понять что происходит:
 
-~~~
+~~~scala
 val xs = 58 #:: 43 #:: 93 #:: Stream.empty
 xs match {
   case #::(first, #::(second, _)) => first - second
