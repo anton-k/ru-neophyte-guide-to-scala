@@ -1,44 +1,68 @@
-Part 12: Type Classes
+Глава 12: Классы типов
 ====================================
 
-After having discussed several functional programming techniques for keeping things DRY and flexible in the last two weeks, in particular function composition, partial function application, and currying, we are going to stick with the general notion of making your code as flexible as possible.
+После изучения нескольких техник функционального программирования, а именно
+композиция частично определённых функций, частичное применение функций, каррирование,
+мы собираемся продолжить в том же духе, мы будем учиться делать код настолько гибким 
+насколько это возможно.
 
-However, this time, we are not looking so much at how you can leverage functions as first-class objects to achieve this goal. Instead, this article is all about using the type system in such a manner that it’s not in the way, but rather supports you in keeping your code extensible: You’re going to learn about type classes.
+Но на этот раз мы поговорим не функциях, а о типах Мы научимся работать с ситемой типов так, чтобы
+она не мешала нам, а помогала, чтобы наш код был расширяемым. Мы собираемся узнать о *классах типов* (type class).
 
-You might think that this is some exotic idea without practical relevance, brought into the Scala community by some vocal Haskell fanatics. This is clearly not the case. Type classes have become an important part of the Scala standard library and even more so of many popular and commonly used third-party open-source libraries, so it’s generally a good idea to make yourself familiar with them.
+Вам может показаться, что это не более чем экзатичная идея, привнесённая в Scala 
+фанатами Haskell, которая лишена практического применения. Но это явно не так. 
+Классы типов стали важной частью стандартной библиотеки Scala, очень часто они встречаются
+и в сторонних свободных библиотеках. Поэтому было бы хорошо с ними разобраться.
 
-I will discuss the idea of type classes, why they are useful, how to benefit from them as a client, and how to implement your own type classes and put them to use for great good.
+Я расскажу об основной идее классов типов, чем почему они так полезны, какие приемущества
+они дают  пользователям нашего кода и как реализовать и применять наши собственные классы типов.
 
-The problem
+Проблема
 ---------------------------------------
 
-Instead of starting off by giving an abstract explanation of what type classes are, let’s tackle this subject by means of an – admittedly simplified, but nevertheless resonably practical – example.
+Вместо того чтобы начать с абстрактного опредеелния, давайте попробуем разобраться что к чему
+на практическом примере, пусть и весьма упрощённом.
 
-Imagine that we want to write a fancy statistics library. This means we want to provide a bunch of functions that operate on collections of numbers, mostly to compute some aggregate values for them. Imagine further that we are restricted to accessing an element from such a collection by index and to using the reduce method defined on Scala collections. We impose this restriction on ourselves because we are going to re-implement a little bit of what the Scala standard library already provides – simply because it’s a nice example without many distractions, and it’s small enough for a blog post. Finally, our implementation assumes that the values we get are already sorted.
+Предположим, что мы хотим написать классную библиотеку для статистики. Это означает, что
+мы собираемся написать кучу функций, который будут принимать коллекции значений и возвращать
+какие-нибудь собирательные показатели.  Предположим, что мы ограничены в операциях над коллекциями.
+Мы можем лишь обращаться по индексу и пользоваться методом `reduce` из стандартной библиотеки для 
+коллекций. Мы накладываем эти ограничения просто потому, что так мы избавимся от лишних 
+деталей, и пример станет доступным для изложения в блоге. Наконец, мы предполагаем,
+что значения поступают к нам отсортированными.
 
-We will start with a very crude implementation of median, quartiles, and iqr numbers of type Double:
+Мы начнём с очень грубой реализации поиска медианы, квартилей и межквартильный интервал для
+чисел типа `Double`:
 
 ~~~
 object Statistics {
   def median(xs: Vector[Double]): Double = xs(xs.size / 2)
+
   def quartiles(xs: Vector[Double]): (Double, Double, Double) =
     (xs(xs.size / 4), median(xs), xs(xs.size / 4 * 3))
+
   def iqr(xs: Vector[Double]): Double = quartiles(xs) match {
     case (lowerQuartile, _, upperQuartile) => upperQuartile - lowerQuartile
   }
+
   def mean(xs: Vector[Double]): Double = {
     xs.reduce(_ + _) / xs.size
   }
 }
 ~~~
 
-The median cuts a data set in half, whereas the lower and upper quartile (first and third element of the tuple returned by our quartile method), split the lowest and highest 25 percent of the data, respectively. Our iqr method returns the interquartile range, which is the difference between the upper and lower quartile.
+Медиана разделяет данные посередине, в то время как нижний и верхний квартили (первый и третьий элементы кортежа,
+который возвращает функция `quartiles`) разделяют данные на нижние и верхние 25%. Метод `iqr` возвращает 
+вкличину межквартильного интервала, которая представляет собой разницу между верхним и нижни квартилями.
 
-Now, of course, we want to support more than just double numbers. So let’s implement all these methods again for Int numbers, right?
+Вдруг нам понадобилось вычисление этих параметров не только для `Double`. Неужели мы будем снова определять 
+эти методы для `Int`?
 
-Well, no! First of all, we can’t simply overload the methods defined above for Vector[Int] without some dirty tricks, because the type parameter suffers from type erasure. Also, that would be a tiny little bit repetitious, wouldn’t it?
+Конечно нет! Во первых мы не можем перегрузить объявленные методы для `Vector[Int]` без некоторых трюков,
+потому что тип параметр страдает от стирания типов (type erasure). При этом в нашем коде появятся повторы, не так ли?
 
-If only Int and Double would extend from a common base class or implement a common trait like Number! We could be tempted to change the type required and returned by our methods to that more general type. Our method signatures would look like this:
+Если бы `Int` и `Double` наследовали от одного общего класса вроде `Number`! Тогда мы могли
+бы написать наши методы в более общем виде:
 
 ~~~
 object Statistics {
@@ -49,9 +73,15 @@ object Statistics {
 }
 ~~~
 
-Thankfully, in this case there is no such common trait, so we aren’t tempted to walk this road at all. However, in other cases, that might very well be the case – and still be a bad idea. Not only do we drop previously available type information, we also close our API against future extensions to types whose sources we don’t control: We cannot make some new number type coming from a third party extend the Number trait.
+К счастью, такого трэйта нет, и мы не сможем выбрать это неверное решение. Но в других ситуациях
+такая возможность моэет представиться, несмотря на то что это по-прежнему останется плохим решением.
+Мы не только ослабляем наши ограничения по типам, мы закрываем интерфейс для расширения, с помощью
+тех типов, которые нам пока неизвестны, мы не можем взять численный тип из сторонней библиотеки и унаследовать
+его от трэйта `Number`.
 
-Ruby’s answer to that problem is monkey patching, polluting the global namespace with an extension to that new type, making it act like a Number after all. Java developers who have got beaten up by the Gang of Four in their youth, on the other hand, will think that an Adapter may solve all of their problems:
+В Ruby мы могли бы воспользоваться обезьяним патчем (monkey patch), засоряя глобальное пространство имён
+расширением к новому типу, так мы сможем заставить его вести себя как `Number`. Разработчики Java, знакомые
+с шаблонами проектирования, могут предложить воспользоваться шаблоном адаптор:
 
 ~~~
 object Statistics {
@@ -79,24 +109,41 @@ object Statistics {
 }
 ~~~
 
-Now we have solved the problem of extensibility: Users of our library can pass in a NumberLike adapter for Int (which we would likely provide ourselves) or for any possible type that might behave like a number, without having to recompile the module in which our statistics methods are implemented.
+Мы решили проблему расширяемости. Пользователи библиотеки могут передать даптор `NumberLike`
+для `Int` (который мы скорее всего сами же и напишем) или для любого другого типа, который
+может выступать в роли числа, без необходимости перекомпиляции, модуля в котором определены
+методы вычисления статистических параметров.
 
-However, always wrapping your numbers in an adapter is not only tiresome to write and read, it also means that you have to create a lot of instances of your adapter classes when interacting with our library.
+Но постоянное заворачивание и разворачивание чисел в адапторы -- не только утомительно
+для написания и чтения, но и ведёт к тому, что нам приходится создавать много значений
+для адапторов.
 
-Type classes to the rescue!
+
+Классы типов приходят на помощь!
 ---------------------------------------------------------
 
-A powerful alternative to the approaches outlined so far is, of course, to define and use a type class. Type classes, one of the prominent features of the Haskell language, despite their name, haven’t got anything to do with classes in object-oriented programming.
+Классы типов предлагают наилучшее решение этой проблемы. Классы типов -- одна из основных
+особенностей языка Haskell. Несмотря на название, они не имеют ничего общего с понятием 
+класс из объектно ориентированного программирования.
 
-A type class C defines some behaviour in the form of operations that must be supported by a type T for it to be a member of type class C. Whether the type T is a member of the type class C is not inherent in the type. Rather, any developer can declare that a type is a member of a type class simply by providing implementations of the operations the type must support. Now, once T is made a member of the type class C, functions that have constrained one or more of their parameters to be members of C can be called with arguments of type T.
+Класс типов `C` определяет некоторое поведение в виде набора операций, которые должны
+быть определена на типе `T`, для того чтобы тот был членом класса типов.
+Является ли некоторый тип `T` членом класса `C` не указывается в определении класса.
+Вместо этого любой пользователь может объявить свой тип членом `C`, определив на нём 
+все необходимые операции. Как только `T` стал членом класса `C`, функции их класса `C`
+могут вызываться на значениях типа `T`:
 
-As such, type classes allow ad-hoc and retroactive polymorphism. Code that relies on type classes is open to extension without the need to create adapter objects.
+Классы типов реализуют ситуативный полиморфизм (ad-hoc polymorphism). Код, зависящий
+от классов типов, открыт для расширений, без необходимости создания объектов-адаптеров.
 
-### Creating a type class
 
-In Scala, type classes can be implemented and used by a combination of techniques. It’s a little more involved than in Haskell, but also gives developers more control.
+### Создание классов типов
 
-Creating a type class in Scala involves several steps. First, let’s define a trait. This is the actual type class:
+В Scala классы типов реализуются с помощью комбинации нескольких техник. 
+Это более окольный путь чем в Haskell, но предлагает большую возможность для контроля.
+
+Создание класса типов в Scala происходит в несколько шагов. Во первых, давайте определим
+трэйт. Он и будет нашим классом типов:
 
 ~~~
 object Math {
@@ -108,11 +155,17 @@ object Math {
 }
 ~~~
 
-We have created a type class called NumberLike. Type classes always take one or more type parameters, and they are usually designed to be stateless, i.e. the methods defined on our NumberLike trait operate only on the passed in arguments. In particular, where our adapter above operated on its member of type T and one argument, the methods defined for our NumberLike type class take two parameters of type T each – the member has become the first parameter of the operations supported by NumberLike.
+Мы создали класс типов с названием `NumberLike`. Классы типов всегда принимают один или несколько типов-параметров.
+Обычно они не содержат состояния, то есть методы определённые в таком трэйте оперируют только данными, переданными
+в метод. В то время как метод из адаптора был привязан к значению и имел один аргумент, наш
+новые метод имеет два аргумента типа `T`. Значение адаптора превратилось в первый аргумент метода,
+определённого в `NumberLike`.
 
-### Providing default members
+### Определение значений по умолчанию
 
-The second step in implementing a type class is usually to provide some default implementations of your type class trait in its companion object. We will see in a moment why this is generally a good strategy. First, however, let’s do this, too, by making Double and Int members of our NumberLike type class:
+Второй шаг реализации класса типа заключается в определении в объекте-компаньоне значений по умолчанию, принадлежащих
+нашему классу типов. Скоро мы узнаем почему хорошо так делать. Но сначала давайте сделаем это, давайте сделаем
+`Double` и `Int` членами класса типов `NumberLike`:
 
 ~~~
 object Math {
@@ -121,12 +174,14 @@ object Math {
     def divide(x: T, y: Int): T
     def minus(x: T, y: T): T
   }
+
   object NumberLike {
     implicit object NumberLikeDouble extends NumberLike[Double] {
       def plus(x: Double, y: Double): Double = x + y
       def divide(x: Double, y: Int): Double = x / y
       def minus(x: Double, y: Double): Double = x - y
     }
+
     implicit object NumberLikeInt extends NumberLike[Int] {
       def plus(x: Int, y: Int): Int = x + y
       def divide(x: Int, y: Int): Int = x / y
@@ -136,11 +191,17 @@ object Math {
 }
 ~~~
 
-Two things: First, you see that the two implementations are basically identical. That is not always the case when creating members of a type classes. Our NumberLike type class is just a rather narrow domain. Later in the article, I will give examples of type classes where there is a lot less room for duplication when implementing them for multiple types. Second, please ignore the fact that we are losing precision in NumberLikeInt by doing integer division. It’s all to keep things simple for this example.
+Отметим два момента. Во первых, видно, что реализации практически одинаковы. Это не всегда так с классами типов.
+Наш класс `NumberLike` очень специфичен. Сокоро мы встретимся с примерами, в которых не так много дублирования
+в реалзиации методов. Во вторых, пожалуйста не заостряйте внимание на том, что мы теряем в точности при 
+выполнении целочисленного деления в `NumberLikeInt`. Это просто учебный пример.
 
-As you can see, members of type classes are usually singleton objects. Also, please note the implicit keyword before each of the type class implementations. This is one of the crucial elements for making type classes possible in Scala, making type class members implicitly available under certain conditions. More about that in the next section.
+Как видно из примера, члены класса являются объектами-синглтонами. Также опбратите внимание на ключевое
+слово `implicit` перед каждой из реализаций. Как раз за счёт этого мы и можем реализовать классы типов в Scala.
+Это ключевое слово делает методы, определённые в синглтоне, неявно доступными при определённых условиях.
+Подробнее мы разберёмся в этом в следующем разделе.
 
-### Coding against type classes
+### Применение классов типов
 
 Now that we have our type class and two default implementations for common types, we want to code against this type class in our statistics module. Let’s focus on the mean method for now:
 
