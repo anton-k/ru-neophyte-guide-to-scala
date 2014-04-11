@@ -9,7 +9,7 @@
 К примеру, мы можем определить образец, который представляет только списки из двух элементов,
 или образец, который представляет только списки из трёх элементов:
 
-~~~
+~~~scala
 val xs = 3 :: 6 :: 12 :: Nil
 xs match {
   case List(a, b) => a * b
@@ -20,7 +20,7 @@ xs match {
 
 Также мы можем представить списки размер которых нам заранее неизвестен с помощью оператора `_*`:
 
-~~~
+~~~scala
 val xs = 3 :: 6 :: 12 :: 24 :: Nil
 xs match {
   case List(a, b, _*) => a * b
@@ -37,7 +37,7 @@ xs match {
 
 Как раз для этого и предназначен метод `unapplySeq`. Посмотрим на возможные сигнатуры типов:
 
-~~~
+~~~scala
 def unapplySeq(object: S): Option[Seq[T]]
 ~~~
 
@@ -56,7 +56,7 @@ def unapplySeq(object: S): Option[Seq[T]]
 Вот очень простой экстрактор, определённый с помощью метода `unapplySeq`, который 
 как раз этим и занимается:
 
-~~~
+~~~scala
 object GivenNames {
   def unapplySeq(name: String): Option[Seq[String]] = {
     val names = name.trim.split(" ")
@@ -71,7 +71,7 @@ object GivenNames {
 
 Давайте протестируем наш новый экстрактор:
 
-~~~
+~~~scala
 def greetWithFirstName(name: String) = name match {
   case GivenNames(firstName, _*) => "Good morning, " + firstName + "!"
   case _ => "Welcome! Please make sure to fill in your name!"
@@ -95,7 +95,7 @@ def greetWithFirstName(name: String) = name match {
 
 Для этого воспользуемся другим вариантом метода `unapplySeq`:
 
-~~~
+~~~scala
 def unapplySeq(object: S): Option[(T1,  .., Tn-1, Seq[T])]
 ~~~
 
@@ -105,7 +105,7 @@ def unapplySeq(object: S): Option[(T1,  .., Tn-1, Seq[T])]
 
 Посмотрим на определение экстрактора:
 
-~~~
+~~~scala
 object Names {
   def unapplySeq(name: String): Option[(String, String, Seq[String])] = {
     val names = name.trim.split(" ")
@@ -126,7 +126,7 @@ object Names {
 
 Воспользуемся нашим экстрактором, для приветствия пользователя:
 
-~~~
+~~~scala
 def greet(fullName: String) = fullName match {
   case Names(lastName, firstName, _*) => "Good morning, " + firstName + " " + lastName + "!"
   case _ => "Welcome! Please make sure to fill in your name!"

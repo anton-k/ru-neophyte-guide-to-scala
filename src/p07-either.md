@@ -40,7 +40,7 @@
 Значения типа `Either` создаются очень просто. И `Left` и `Right` являются `case`-классами. 
 Так если мы хотим реализовать непробиваемую систему интернет-цензуры, мы можем сделать это так:
 
-~~~
+~~~scala
 import scala.io.Source
 import java.net.URL
 
@@ -62,7 +62,7 @@ def getContent(url: URL): Either[String, Source] =
 и `isRight`. Также мы можем выполнять сопоставление с образцом, этот способ работы с типом `Either`
 наиболее удобен:
 
-~~~
+~~~scala
 getContent(new URL("http://google.com")) match {
   case Left(msg) => println(msg)
   case Right(source) => source.getLines.foreach(println)
@@ -87,7 +87,7 @@ getContent(new URL("http://google.com")) match {
 
 После того как у нас есть проекция, мы можем преобразовать её элемент:
 
-~~~
+~~~scala
 val content: Either[String, Iterator[String]] =
   getContent(new URL("http://danielwestheide.com")).right.map(_.getLines())
 // content содержит Right со строчками из Source, который был получен с помощью getContent
@@ -103,7 +103,7 @@ val moreContent: Either[String, Iterator[String]] =
 
 То же самое мы можем выполнить и для `LeftProjection`:
 
-~~~
+~~~scala
 val content: Either[Iterator[String], Source] =
   getContent(new URL("http://danielwestheide.com")).left.map(Iterator(_))
 // content содержит Right с Source, в том виде, в котором он был получен из getContent
@@ -133,7 +133,7 @@ val moreContent: Either[Iterator[String], Source] =
 узнать среднее число строк для двух моих статей. Нам ведь давно хотелось узнать об этом, не так ли?
 Мы можем решить эту сложнейшую задачу, примерно так:
 
-~~~
+~~~scala
 val part5 = new URL("http://t.co/UR1aalX4")
 val part6 = new URL("http://t.co/6wlKwTmu")
 val content = getContent(part5).right.map(a =>
@@ -148,7 +148,7 @@ val content = getContent(part5).right.map(a =>
 Однако мы можем не создавать вложенную структуру изначально. Если мы вызовем `flatMap` на `RightProjection`, то
 мы полуим более приятный результат. Это приведёт к тому что, мы избавимся от `Right` во внутреннем `Either`. 
 
-~~~
+~~~scala
 val content = getContent(part5).right.flatMap(a =>
   getContent(part6).right.map(b =>
     (a.getLines().size + b.getLines().size) / 2))
@@ -165,7 +165,7 @@ val content = getContent(part5).right.flatMap(a =>
 
 Давайте перепишем наш пример с `flatMap` через генераторы:
 
-~~~
+~~~scala
 def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
   for {
     source1 <- getContent(url1).right
@@ -178,7 +178,7 @@ def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
 Теперь немного перепишем это выражение. Поскольку возвращаемый результат слишком
 многословен, давайте определим локальные переменные для его упрощения:
 
-~~~
+~~~scala
 def averageLineCountWontCompile(url1: URL, url2: URL): Either[String, Int] =
   for {
     source1 <- getContent(url1).right
@@ -192,7 +192,7 @@ def averageLineCountWontCompile(url1: URL, url2: URL): Either[String, Int] =
 синтаксического сахара `for`-генераторов. Исходное выражение превратится в нечто
 менее наглядное:
 
-~~~
+~~~scala
 def averageLineCountDesugaredWontCompile(url1: URL, url2: URL): Either[String, Int] =
   getContent(url1).right.flatMap { source1 =>
     getContent(url2).right.map { source2 =>
@@ -212,7 +212,7 @@ def averageLineCountDesugaredWontCompile(url1: URL, url2: URL): Either[String, I
 и без локальных переменных. Если они нам действительно нужна, мы можем обойти проблему,
 заменив простые переменые генераторами:
 
-~~~
+~~~scala
 def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
   for {
     source1 <- getContent(url1).right
@@ -246,7 +246,7 @@ def averageLineCount(url1: URL, url2: URL): Either[String, Int] =
 
 Рассмотри на примере объединения двух операций, определённых на левой и правой проекции:
 
-~~~
+~~~scala
 val content: Iterator[String] =
   getContent(new URL("http://danielwestheide.com")).fold(Iterator(_), _.getLines())
 
@@ -276,7 +276,7 @@ val moreContent: Iterator[String] =
 Необходимо определить специальный метод, воспользовавшись очень полезным объектом
 `exception` из пакета `scala.util.control`:
 
-~~~
+~~~scala
 import scala.util.control.Exception.catching
 def handling[Ex <: Throwable, T](exType: Class[Ex])(block: => T): Either[Ex, T] =
   catching(exType).either(block).asInstanceOf[Either[Ex, T]]
@@ -288,7 +288,7 @@ def handling[Ex <: Throwable, T](exType: Class[Ex])(block: => T): Either[Ex, T] 
 
 С помощью этого метода мы можем указывать на тип исключения в `Either`:
 
-~~~
+~~~scala
 import java.net.MalformedURLException
 def parseURL(url: String): Either[MalformedURLException, URL] =
   handling(classOf[MalformedURLException])(new URL(url))
@@ -302,7 +302,7 @@ def parseURL(url: String): Either[MalformedURLException, URL] =
 
 Приведём пример:
 
-~~~
+~~~scala
 case class Customer(age: Int)
 
 class Cigarettes
@@ -325,7 +325,7 @@ def buyCigarettes(customer: Customer): Either[UnderAgeFailure, Cigarettes] =
 
 Предположим, что для нашего интернет-цензора определён чёрный список:
 
-~~~
+~~~scala
 type Citizen = String
 case class BlackListedResource(url: URL, visitors: Set[Citizen])
 
@@ -347,7 +347,7 @@ val blacklist = List(
 
 Мы можем обработать наш список следующим образом: 
 
-~~~
+~~~scala
 val checkedBlacklist: List[Either[URL, Set[Citizen]]] =
   blacklist.map(resource =>
     if (resource.visitors.isEmpty) Left(resource.url)
@@ -358,7 +358,7 @@ val checkedBlacklist: List[Either[URL, Set[Citizen]]] =
 и правые -- множества проблемных пользователей. Теперь мы можем совсем просто установить и проблемных пользователей
 и подозрительные страницы: 
 
-~~~
+~~~scala
 val suspiciousResources = checkedBlacklist.flatMap(_.left.toOption)
 val problemCitizens = checkedBlacklist.flatMap(_.right.toOption).flatten.toSet
 ~~~

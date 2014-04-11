@@ -18,7 +18,7 @@
 на способ, знакомый нам по другим языкам, таким как Java или Ruby. В Scala мы можем создавать
 исключения точно так же:
 
-~~~
+~~~scala
 case class Customer(age: Int)
 
 class Cigarettes
@@ -35,7 +35,7 @@ def buyCigarettes(customer: Customer): Cigarettes =
 мы воспользуемся сопоставлением с образцом для того, чтобы определить какие исключения
 мы хотим обработать:
 
-~~~
+~~~scala
 val youngCustomer = Customer(15)
 try {
   buyCigarettes(youngCustomer)
@@ -86,7 +86,7 @@ try {
 может набрать URL страницы, которую он хочет просмотреть. Где-то в приложении нам
 нужно разобрать URL из строки и преобразовать его в `java.net.URL`:
 
-~~~
+~~~scala
 import scala.util.Try
 import java.net.URL
 def parseURL(url: String): Try[URL] = Try(new URL(url))
@@ -116,7 +116,7 @@ def parseURL(url: String): Try[URL] = Try(new URL(url))
 Также для `Try` определён метод `getOrElse`, который возвращает значение по умолчанию
 в случае возникновения исключения.
 
-~~~
+~~~scala
 val url = parseURL(Console.readLine("URL: ")) getOrElse new URL("http://duckduckgo.com")
 ~~~
 
@@ -132,7 +132,7 @@ val url = parseURL(Console.readLine("URL: ")) getOrElse new URL("http://duckduck
 Метод `map` отображает `Try[A]` из `Success[A]` в `Success[B]`. Если значение содержит `Failure[A]`, то результат `Try[B]` 
 также  будет содержать `Failure[B]` вместе с тем же исключением, что и в `Failure[A]`.
 
-~~~
+~~~scala
 parseURL("http://danielwestheide.com").map(_.getProtocol)
 // results in Success("http")
 parseURL("garbage").map(_.getProtocol)
@@ -143,7 +143,7 @@ parseURL("garbage").map(_.getProtocol)
 получим вложенные значения типа `Try`, чего хотелось бы избежать. К примеру , посмотрим на метод,
 который возвращает данные для данного URL:
 
-~~~
+~~~scala
 import java.io.InputStream
 def inputStreamForURL(url: String): Try[Try[Try[InputStream]]] = parseURL(url).map { u =>
   Try(u.openConnection()).map(conn => Try(conn.getInputStream))
@@ -164,7 +164,7 @@ def inputStreamForURL(url: String): Try[Try[Try[InputStream]]] = parseURL(url).m
 
 Давайте перепишем предыдущий пример через `flatMap`:
 
-~~~
+~~~scala
 def inputStreamForURL(url: String): Try[InputStream] = parseURL(url).flatMap { u =>
   Try(u.openConnection()).flatMap(conn => Try(conn.getInputStream))
 }
@@ -180,7 +180,7 @@ def inputStreamForURL(url: String): Try[InputStream] = parseURL(url).flatMap { u
 Если значение `Try`, содержит `Success[A]` и предикат вернёт истину, тогда на выходе
 будет то же самое значение:
 
-~~~
+~~~scala
 def parseHttpURL(url: String) = parseURL(url).filter(_.getProtocol == "http")
 parseHttpURL("http://apache.openmirror.de") // results in a Success[URL]
 parseHttpURL("ftp://mirror.netcologne.de/apache.org") // results in a Failure[URL]
@@ -190,7 +190,7 @@ parseHttpURL("ftp://mirror.netcologne.de/apache.org") // results in a Failure[UR
 содержит `Success[A]`. Метод `foreach` извлечёт значение и выполнит все побочные эффекты
 из переданной процедуры. Функция будет вызвана только один раз. 
 
-~~~
+~~~scala
 parseHttpURL("http://danielwestheide.com").foreach(println)
 ~~~
 
@@ -200,7 +200,7 @@ parseHttpURL("http://danielwestheide.com").foreach(println)
 `for`-генераторами. В большинстве случаев `for`-генераторы делают код гораздо более наглядным.
 К примеру, реализуем метод, возвращающий содержание страницы по данному адресу:
 
-~~~
+~~~scala
 import scala.io.Source
 def getURLContent(url: String): Try[Iterator[String]] =
   for {
@@ -233,7 +233,7 @@ def getURLContent(url: String): Try[Iterator[String]] =
 Предположим, что мы хотим показать пользователю веб-страницу или сообщение об ошибке,
 если загрузить страницу не удалось:
 
-~~~
+~~~scala
 import scala.util.Success
 import scala.util.Failure
 getURLContent("http://danielwestheide.com/foobar") match {
@@ -253,7 +253,7 @@ getURLContent("http://danielwestheide.com/foobar") match {
 
 Давайте с помощью метода `recover` вернём различные сообщения об ошибках в зависимости от типа исключения: 
 
-~~~
+~~~scala
 import java.net.MalformedURLException
 import java.io.FileNotFoundException
 val content = getURLContent("garbage") recover {

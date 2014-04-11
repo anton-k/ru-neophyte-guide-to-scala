@@ -48,7 +48,7 @@
 хочет настроить фильтр блокируемых сообщений. В нашем приложении письма представлены 
 таким простым `case`-классом:
 
-~~~
+~~~scala
 case class Email(
   subject: String,
   text: String,
@@ -60,7 +60,7 @@ case class Email(
 В итоге у нас будет функция `Email => Boolean`, с помощью которой мы будем фильтровать письма.
 Если функция вернёт истину мы принимаем письмо, в противном случае -- отбрасываем.
 
-~~~
+~~~scala
 type EmailFilter = Email => Boolean
 def newMailsForUser(mails: Seq[Email], f: EmailFilter) = mails.filter(f)
 ~~~
@@ -70,7 +70,7 @@ def newMailsForUser(mails: Seq[Email], f: EmailFilter) = mails.filter(f)
 
 Теперь мы можем создать методы-фабрики, создающие `EmailFilter` на основе предпочтений пользователей:
 
-~~~
+~~~scala
 val sentByOneOf: Set[String] => EmailFilter =
   senders => email => senders.contains(email.sender)
 
@@ -88,7 +88,7 @@ val maximumSize: Int => EmailFilter = n => email => email.text.size <= n
 
 С помощью любой из этих функций мы можем создать новый фильтр `EmailFilter` для функции `newMailsForUser`:
 
-~~~
+~~~scala
 val emailFilter: EmailFilter = notSentByAnyOf(Set("johndoe@example.com"))
 
 val mails = Email(
@@ -114,14 +114,14 @@ newMailsForUser(mails, emailFilter) // returns an empty list
 Для этого в функциях `minimumSize` и `maximumSize` мы воспользуемся функцией `sizeConstraint`.
 Она будет принимать предикат, определённый на длине текста письма:
 
-~~~
+~~~scala
 type SizeChecker = Int => Boolean
 val sizeConstraint: SizeChecker => EmailFilter = f => email => f(email.text.size)
 ~~~
 
 Теперь мы можем выразить `minimumSize` и `maximumSize` через `sizeConstraint`:
 
-~~~
+~~~scala
 val minimumSize: Int => EmailFilter = n => sizeConstraint(_ >= n)
 val maximumSize: Int => EmailFilter = n => sizeConstraint(_ <= n)
 ~~~
@@ -135,7 +135,7 @@ val maximumSize: Int => EmailFilter = n => sizeConstraint(_ <= n)
 Определим функцию `complement`, которая на основе предиката `A => Boolean` 
 построит предикат, который будет возвращать логическое отрицание исходного предиката.
 
-~~~
+~~~scala
 def complement[A](predicate: A => Boolean) = (a: A) => !predicate(a)
 ~~~
 
@@ -151,7 +151,7 @@ def complement[A](predicate: A => Boolean) = (a: A) => !predicate(a)
 
 Теперь мы можем определить `notSentByAnyOf` без дублирования:
 
-~~~
+~~~scala
 val notSentByAnyOf = sentByOneOf andThen(g => complement(g))
 ~~~
 
@@ -160,7 +160,7 @@ val notSentByAnyOf = sentByOneOf andThen(g => complement(g))
 в функцию `complement`. Мы можем сделать это выражение ещё более наглядным, воспользовавшись
 специальным синтаксисом, для определения функций, через подчёркивание:
 
-~~~
+~~~scala
 val notSentByAnyOf = sentByOneOf andThen(complement(_))
 ~~~
 
@@ -178,7 +178,7 @@ val notSentByAnyOf = sentByOneOf andThen(complement(_))
 
 Мы можем определить функции для комбинации предикатов так:
 
-~~~
+~~~scala
 def any[A](predicates: (A => Boolean)*): A => Boolean =
   a => predicates.exists(pred => pred(a))
 def none[A](predicates: (A => Boolean)*) = complement(any(predicates: _*))
@@ -193,7 +193,7 @@ def every[A](predicates: (A => Boolean)*) = none(predicates.view.map(complement(
 Теперь мы можем определять составные филтры `EmailFilter` на основе предпочтений
 пользователя:
 
-~~~
+~~~scala
 val filter: EmailFilter = every(
     notSentByAnyOf(Set("johndoe@example.com")),
     minimumSize(100),
@@ -207,7 +207,7 @@ val filter: EmailFilter = every(
 не только фильтровать письма, но и обрабатывать их. Преобразование письма это просто функция:
 `Email => Email`. Возможны следующие преобразования:
 
-~~~
+~~~scala
 val addMissingSubject = (email: Email) =>
   if (email.subject.isEmpty) email.copy(subject = "No subject")
   else email
@@ -226,7 +226,7 @@ val addAdvertismentToFooter = (email: Email) =>
 либо с помощью многократных вызовов метода `andThen`, либо вызовом метода `chain`, что определён
 на объекте компаньоне `Function`:
 
-~~~
+~~~scala
 val pipeline = Function.chain(Seq(
   addMissingSubject,
   checkSpelling,
@@ -248,7 +248,7 @@ val pipeline = Function.chain(Seq(
 метода `orElse`, он определён в трэйте `PartialFunction`. Следующая функция будет вызвана на значении только в том случае, если
 значение не определено для предыдущей функции. Мы можем делать что-то вроде:
 
-~~~
+~~~scala
 val handler = fooHandler orElse barHandler orElse bazHandler
 ~~~
 

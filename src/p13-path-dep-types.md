@@ -28,7 +28,7 @@
 Но элитарные писатели никогда не допустят такого. Есть способ предотвращения таких ситуаций.
 Рассмотрим первую попытку:
 
-~~~
+~~~scala
 object Franchise {
    case class Character(name: String)
  }
@@ -45,7 +45,7 @@ class Franchise(name: String) {
 Персонажы представлены `case`-классом `Character` и в классе первоисточника `Franchise` есть метод 
 для создания новой истории двух персонажах. Давайте создадим нексколько историй:
 
-~~~
+~~~scala
 val starTrek = new Franchise("Star Trek")
 val starWars = new Franchise("Star Wars")
 
@@ -58,7 +58,7 @@ val yoda = Franchise.Character("Yoda")
 
 К сожалению, пока мы не можем избежать неприятностей:
 
-~~~
+~~~scala
 starTrek.createFanFiction(lovestruck = jadzia, objectOfDesire = luke)
 ~~~
 
@@ -67,7 +67,7 @@ starTrek.createFanFiction(lovestruck = jadzia, objectOfDesire = luke)
 проверить на этапе выполнения, что два персонажа являются персонажами из одного первоисточника. 
 К примеру мы можем изменить модель так:
 
-~~~
+~~~scala
 object Franchise {
   case class Character(name: String, franchise: Franchise)
 }
@@ -99,7 +99,7 @@ class Franchise(name: String) {
 а не с самим типом. Это означает, что если мы попытаемся воспользоваться значением внутреннего
 типа за пределами значения окружающего типа, компилятор сообщит нам об ошибке:
 
-~~~
+~~~scala
 class A {
   class B
   var b: Option[B] = None
@@ -118,7 +118,7 @@ a2.b = Some(b1) // does not compile
 
 Мы можем воспользоваться этой техникой для решения исходной задачи о целующихся персонажах:
 
-~~~
+~~~scala
 class Franchise(name: String) {
   case class Character(name: String)
   def createFanFictionWith(
@@ -132,7 +132,7 @@ class Franchise(name: String) {
 
 Давайте снова создадим наш пример с сюжетами:
 
-~~~
+~~~scala
 val starTrek = new Franchise("Star Trek")
 val starWars = new Franchise("Star Wars")
 
@@ -146,7 +146,7 @@ val yoda = starWars.Character("Yoda")
 Из примера видно, что значения `Character` создаются так, что их типы связаны со специфическими
 первоисточниками. Давайте посмотрим, что случится, если мы попытаемся совместить персонажей:
 
-~~~
+~~~scala
 starTrek.createFanFictionWith(lovestruck = quark, objectOfDesire = jadzia)
 starWars.createFanFictionWith(lovestruck = luke, objectOfDesire = yoda)
 ~~~
@@ -155,13 +155,13 @@ starWars.createFanFictionWith(lovestruck = luke, objectOfDesire = yoda)
 
 Теперь давайте попробуем состряпать сюжет о Джадзия Дакс и Люке Скайвокере:
 
-~~~
+~~~scala
 starTrek.createFanFictionWith(lovestruck = jadzia, objectOfDesire = luke)
 ~~~
 
 Вуаля! Этот пример не компилируется! Компилятор пожалуется на несоответствие типов:
 
-~~~
+~~~scala
 found   : starWars.Character
 required: starTrek.Character
                starTrek.createFanFictionWith(lovestruck = jadzia, objectOfDesire = luke)
@@ -172,7 +172,7 @@ required: starTrek.Character
 В этом случае мы можем воспользоваться типами, которые зависят от пути, сославшись на тип, который
 содержится в одном из предыдущих параметров:
 
-~~~
+~~~scala
 def createFanFiction(f: Franchise)(lovestruck: f.Character, objectOfDesire: f.Character) =
   (lovestruck, objectOfDesire)
 ~~~
@@ -190,7 +190,7 @@ def createFanFiction(f: Franchise)(lovestruck: f.Character, objectOfDesire: f.Ch
 лишь операции задания значения и чтения значения по ключу. Но делать это безопасно относительно типов.
 Вот наша очень упрощённая реализация: 
 
-~~~
+~~~scala
 object AwesomeDB {
   abstract class Key(name: String) {
     type Value
@@ -212,7 +212,7 @@ class AwesomeDB {
 
 Теперь мы можемобъявить конкретные ключи:
 
-~~~
+~~~scala
 trait IntValued extends Key {
  type Value = Int
 }
@@ -229,7 +229,7 @@ object Keys {
 
 Теперь мы можем устанавливать и читать значения с помощью
 безопасных по типам методов:
-~~~
+~~~scala
 val dataStore = new AwesomeDB
 dataStore.set(Keys.foo)(23)
 val i: Option[Int] = dataStore.get(Keys.foo)

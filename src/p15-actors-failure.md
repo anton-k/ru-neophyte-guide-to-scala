@@ -39,7 +39,7 @@
 Я не буду повторять определения. Они очень простые, давайте сосредоточимся
 на том, как создавались значения для акторов:
 
-~~~
+~~~scala
 import akka.actor.ActorSystem
 
 val system = ActorSystem("Coffeehouse")
@@ -63,7 +63,7 @@ val customer = system.actorOf(Props(classOf[Customer], barista), "Customer")
 для созданных акторов. Пути -- это по сути URL для акторов, по которым мы можем ссылаться
 на акторы. Мы можем получить путь к актору вызовом метода `path` на его ссылке `ActorRef`:
 
-~~~
+~~~scala
 barista.path // => akka.actor.ActorPath = akka://Coffeehouse/user/Barista
 customer.path // => akka.actor.ActorPath = akka://Coffeehouse/user/Customer
 ~~~
@@ -77,7 +77,7 @@ customer.path // => akka.actor.ActorPath = akka://Coffeehouse/user/Customer
 передать `Customer` ссылку на актор бармена, мы могли бы найти этот актор вызовом метода
 `actorSelection` на `ActorContext`, передав путь в качестве аргумента:
 
-~~~
+~~~scala
 context.actorSelection("../Barista")
 ~~~
 
@@ -99,7 +99,7 @@ context.actorSelection("../Barista")
 Предположим что в баре есть кассовый аппарат (`Register`), который  создаёт чеки и 
 обновляет счётчик общих продаж за день. Вот пробная версия такого актора:
 
-~~~
+~~~scala
 import akka.actor._
 
 object Register {
@@ -135,7 +135,7 @@ class Register extends Actor {
 не из системы акторов, а из актора `Barista`. Исходная версия нашего родительского
 актора выглядит так:
 
-~~~
+~~~scala
 object Barista {
   case object EspressoRequest
   case object ClosingTime
@@ -193,7 +193,7 @@ class Barista extends Actor {
 
 Наконец определим актор для посетителя `Customer`. Он является корневым также как и актор бармена:
 
-~~~
+~~~scala
 object Customer {
   case object CaffeineWithdrawalWarning
 }
@@ -217,7 +217,7 @@ class Customer(coffeeSource: ActorRef) extends Actor with ActorLogging {
 Теперь если мы создадим систему акторов с барменом и двумя посетителями, мы можем
 напоить двух наших кофеманов, чашечкой чёрного золота: 
 
-~~~
+~~~scala
 import Customer._
 
 val system = ActorSystem("Coffeehouse")
@@ -243,13 +243,13 @@ customerAlina ! CaffeineWithdrawalWarning
 Наш кассовый аппарат не так надёжен как нам бы хотелось. Он может зажевать бумагу.
 Давайте добавим исключение для этого случая, в объект-компаньон для `Register`:
 
-~~~
+~~~scala
 class PaperJamException(msg: String) extends Exception(msg)
 ~~~
 
 Теперь давайте изменим метод `createReceipt` в нашем акторе `Register`:
 
-~~~
+~~~scala
 def createReceipt(price: Int): Receipt = {
   import util.Random
   if (Random.nextBoolean())
@@ -288,7 +288,7 @@ Akka должна реагировать на определённые ошиб�
 
 Список доступных директив:
 
-~~~
+~~~scala
 sealed trait Directive
 case object Resume extends Directive
 case object Restart extends Directive
@@ -316,7 +316,7 @@ case object Escalate extends Directive
 Нам не нужно задавать стратегии для всех акторов. Пока мы не определяли стратегий супервизора. 
 В таком случае будет использована стратегия по умолчанию:
 
-~~~
+~~~scala
 final val defaultStrategy: SupervisorStrategy = {
   def defaultDecider: Decider = {
     case _: ActorInitializationException ⇒ Stop
@@ -368,7 +368,7 @@ final val defaultStrategy: SupervisorStrategy = {
 Давайте проверим перезапускается ли наш актор `Register`. Добавим  вывод сообщения в лог
 к методу `postRestart`. Также добавим наследование от трэйта `ActorLogging`:
 
-~~~
+~~~scala
 override def postRestart(reason: Throwable) {
   super.postRestart(reason)
   log.info(s"Restarted because of ${reason.getMessage}")
@@ -386,7 +386,7 @@ override def postRestart(reason: Throwable) {
 то актор будет остановлен, что приведёт к окончательной гибели актора. Этот предел может
 быть указан в конструкторе стратегии супервизора:
 
-~~~
+~~~scala
 import scala.concurrent.duration._
 import akka.actor.OneForOneStrategy
 import akka.actor.SupervisorStrategy.Restart
@@ -400,7 +400,7 @@ OneForOneStrategy(10, 2.minutes) {
 Итак теперь наша система работает гладко и восстанавливается, когда 
 этот чёртов кассовый аппарат клинит. Но так ли это? Давайте изменим печать в логи:
 
-~~~
+~~~scala
 override def postRestart(reason: Throwable) {
   super.postRestart(reason)
   log.info(s"Restarted, and revenue is $revenue cents")
@@ -409,7 +409,7 @@ override def postRestart(reason: Throwable) {
 
 Также давайте добавим печати в логи к нашей частично определённой функции `Receive`:
 
-~~~
+~~~scala
 def receive = {
   case Transaction(article) =>
     val price = prices(article)
@@ -428,7 +428,7 @@ def receive = {
 Конечно мы можем изменить стратегию супервизора так, чтобы при исключении `PaperJamException`
 мы бы продолжали работу актора:
 
-~~~
+~~~scala
 val decider: PartialFunction[Throwable, Directive] = {
   case _: PaperJamException => Resume
 }
@@ -449,7 +449,7 @@ override def supervisorStrategy: SupervisorStrategy =
 произошёл ли сбой в работе кассового аппарата или нет. Давайте изменим определение для `Register`
 следующим образом:
 
-~~~
+~~~scala
 class Register extends Actor with ActorLogging {
   import Register._
   import Barista._
@@ -499,7 +499,7 @@ class Register extends Actor with ActorLogging {
 печать чеков, в дочерний актор, который мы так и назовём `ReceiptPrinter`. Посмотрим
 на его определение:
 
-~~~
+~~~scala
 object ReceiptPrinter {
   case class PrintJob(amount: Int)
   class PaperJamException(msg: String) extends Exception(msg)
@@ -537,7 +537,7 @@ class ReceiptPrinter extends Actor with ActorLogging {
 и актор `Register`, который теперь занимается только тем, что обновляет
 общий счёт, передавая остальную часть работы дочернему актору: 
 
-~~~
+~~~scala
 class Register extends Actor with ActorLogging {
   import akka.pattern.ask
   import akka.pattern.pipe
@@ -612,7 +612,7 @@ class Register extends Actor with ActorLogging {
 Для этого давайте восстановимся после исключения `AskTimeoutException` и отобразим его в сообщение `ComebackLater`.
 Частисно определённая функция `Receive` для `Barista` примет вид:
 
-~~~
+~~~scala
 def receive = {
   case EspressoRequest =>
     val receipt = register ? Transaction(Espresso)
@@ -649,7 +649,7 @@ def receive = {
 за актором `Barista`, наши посетители сильно нуждаются в кофе, поэтому вполне оправдано 
 заключить, что они зависят от него:
 
-~~~
+~~~scala
 class Customer(coffeeSource: ActorRef) extends Actor with ActorLogging {
   import context.dispatcher
 

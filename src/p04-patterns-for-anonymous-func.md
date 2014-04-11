@@ -11,14 +11,14 @@
 прописными буквами (это может понадобиться для поиска), мы можем определить анонимную
 функцию и передать её в метод `map`:
 
-~~~
+~~~scala
 val songTitles = List("The White Hare", "Childe the Hunter", "Take no Rogues")
 songTitles.map(t => t.toLowerCase)
 ~~~
 
 Мы можем записать ещё короче чере прочерк, с помощью смпециалного синтаксиса для определения анонимных функций:
 
-~~~
+~~~scala
 songTitles.map(_.toLowerCase)
 ~~~
 
@@ -28,7 +28,7 @@ songTitles.map(_.toLowerCase)
 
 Мы можем определить её с помощью методов `filter` и `map`, передав им анонимные функции. 
 
-~~~
+~~~scala
 val wordFrequencies = ("habitual", 6) :: ("and", 56) :: ("consuetudinary", 2) ::
   ("additionally", 27) :: ("homely", 5) :: ("society", 13) :: Nil
 
@@ -47,7 +47,7 @@ wordsWithoutOutliers(wordFrequencies) // List("habitual", "homely", "society")
 фигурными скобками, который содержит набор `case`-альтернатив. При этом мы пропускаем ключевое 
 слово `match` перед блоком. Давайте перепишем наш пример в этой нотации:
 
-~~~
+~~~scala
 def wordsWithoutOutliers(wordFrequencies: Seq[(String, Int)]): Seq[String] =
   wordFrequencies.filter { case (_, f) => f > 3 && f < 25 } map { case (w, _) => w }
 ~~~
@@ -57,7 +57,7 @@ def wordsWithoutOutliers(wordFrequencies: Seq[(String, Int)]): Seq[String] =
 
 Если мы попробуем присвоить такую анонимную функцию переменной, она будет иметь ожидаемый тип:
 
-~~~
+~~~scala
 val predicate: (String, Int) => Boolean = { case (_, f) => f > 3 && f < 25 }
 val transformFn: (String, Int) => String = { case (w, _) => w }
 ~~~
@@ -84,7 +84,7 @@ val transformFn: (String, Int) => String = { case (w, _) => w }
 Если вы заглянете в стандартную библиотеку коллекций. вы заметите метод `collect`, 
 который для значения `Seq[A]` имеет следующий тип:
 
-~~~
+~~~scala
 def collect[B](pf: PartialFunction[A, B])
 ~~~
 
@@ -111,7 +111,7 @@ def collect[B](pf: PartialFunction[A, B])
 
 Но давайте вернёмся к нашему примеру и напишем частично определённую функцию для метода `collect`:
 
-~~~
+~~~scala
 val pf: PartialFunction[(String, Int), String] = {
   case (word, freq) if freq > 3 && freq < 25 => word
 }
@@ -122,7 +122,7 @@ val pf: PartialFunction[(String, Int), String] = {
 
 В явном виде (без специального синтаксиса) определение этой функции будет иметь вид:
 
-~~~
+~~~scala
 val pf = new PartialFunction[(String, Int), String] {
   def apply(wordFrequency: (String, Int)) = wordFrequency match {
     case (word, freq) if freq > 3 && freq < 25 => word
@@ -140,20 +140,20 @@ val pf = new PartialFunction[(String, Int), String] {
 но в результате мы получим `MatchError` на этапе выполнения, посольку наша
 функция определена не для всех значений. 
 
-~~~
+~~~scala
 wordFrequencies.map(pf) // will throw a MatchError
 ~~~
 
 Но мы можем передать нашу функцию методу `collect`, что приведёт к одновременной фильтрации и
 пеобразованию последовательности, как и ожидалось:
 
-~~~
+~~~scala
 wordFrequencies.collect(pf) // List("habitual", "homely", "society")
 ~~~
 
 Давайте перепишем наше исходное определение в виде функции:
 
-~~~
+~~~scala
 def wordsWithoutOutliers(wordFrequencies: Seq[(String, Int)]): Seq[String] =
   wordFrequencies.collect { case (word, freq) if freq > 3 && freq < 25 => word }
 ~~~

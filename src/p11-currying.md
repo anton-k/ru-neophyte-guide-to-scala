@@ -23,7 +23,7 @@
 
 Наш `case`-класс `Email` остаётся прежним:
 
-~~~
+~~~scala
 case class Email(
   subject: String,
   text: String,
@@ -43,7 +43,7 @@ type EmailFilter = Email => Boolean
 
 Вот наш метод `sizeConstraint`:
 
-~~~
+~~~scala
 type IntPairPred = (Int, Int) => Boolean
 def sizeConstraint(pred: IntPairPred, n: Int, email: Email) = pred(email.text.size, n)
 ~~~
@@ -60,7 +60,7 @@ def sizeConstraint(pred: IntPairPred, n: Int, email: Email) = pred(email.text.si
 основные предикаты `IntPairPred`. После этого при вызове `sizeConstraint`
 нам не придётся раз за разом выписывать анонимные функции:
 
-~~~
+~~~scala
 val gt: IntPairPred = _ > _
 val ge: IntPairPred = _ >= _
 val lt: IntPairPred = _ < _
@@ -71,7 +71,7 @@ val eq: IntPairPred = _ == _
 Наконец, всё готово для того чтобы выполнить частичное применение функции `sizeConstraint`.
 Мы зафиксируем первый аргумент с одним из наших значений для `IntPairPred`:
 
-~~~
+~~~scala
 val minimumSize: (Int, Email) => Boolean = sizeConstraint(ge, _: Int, _: Email)
 val maximumSize: (Int, Email) => Boolean = sizeConstraint(le, _: Int, _: Email)
 ~~~
@@ -87,7 +87,7 @@ val maximumSize: (Int, Email) => Boolean = sizeConstraint(le, _: Int, _: Email)
 С другой стороны теперь у нас есть выбор какие параметры оставить. к примеру, мы можем
 оставить первый параметр и зафиксировать размер письма:
 
-~~~
+~~~scala
 val constr20: (IntPairPred, Email) => Boolean = sizeConstraint(_: IntPairPred, 20, _: Email)
 val constr30: (IntPairPred, Email) => Boolean = sizeConstraint(_: IntPairPred, 30, _: Email)
 ~~~
@@ -108,7 +108,7 @@ val constr30: (IntPairPred, Email) => Boolean = sizeConstraint(_: IntPairPred, 3
 совпадать с исходным списком аргументов для метода. Так мы можем превратить
 метод в функцию, которая может быть присвоена переменной или передана в метод.
 
-~~~
+~~~scala
 val sizeConstraintFn: (IntPairPred, Int, Email) => Boolean = sizeConstraint _
 ~~~
 
@@ -122,14 +122,14 @@ val sizeConstraintFn: (IntPairPred, Int, Email) => Boolean = sizeConstraint _
 Зафиксировав целочисленный параметр для `minimumSize` и `maximumSize` мы
 можем создать новые функции типа `EmailFilter`:
 
-~~~
+~~~scala
 val min20: EmailFilter = minimumSize(20, _: Email)
 val max20: EmailFilter = maximumSize(20, _: Email)
 ~~~
 
 Мы могли выполнить то же самое через частичноеприменение функции `constr20`:
 
-~~~
+~~~scala
 val min20: EmailFilter = constr20(ge, _: Email)
 val max20: EmailFilter = constr20(le, _: Email)
 ~~~
@@ -143,7 +143,7 @@ val max20: EmailFilter = constr20(le, _: Email)
 Методы в Scala могут иметь несколько списков аргументов. Давайте перепишем
 `sizeConstraint` так, чтобы каждый аргумент находился бы в своём списке.
 
-~~~
+~~~scala
 def sizeConstraint(pred: IntPairPred)(n: Int)(email: Email): Boolean =
   pred(email.text.size, n)
 ~~~
@@ -151,7 +151,7 @@ def sizeConstraint(pred: IntPairPred)(n: Int)(email: Email): Boolean =
 Если мы превратим этот метод в функциональны объект, пригодный для присваивания
 или передачи в другие методы, сигнатура новой функции будет иметь вид:
 
-~~~
+~~~scala
 val sizeConstraintFn: IntPairPred => Int => Email => Boolean = sizeConstraint _
 ~~~
 
@@ -167,7 +167,7 @@ val sizeConstraintFn: IntPairPred => Int => Email => Boolean = sizeConstraint _
 в функцию `sizeConstraintFn`, которая принимает в точности один аргумент и возвращает
 функцию одного аргумента:
 
-~~~
+~~~scala
 val minSize: Int => Email => Boolean = sizeConstraint(ge)
 val maxSize: Int => Email => Boolean = sizeConstraint(le)
 ~~~
@@ -177,7 +177,7 @@ val maxSize: Int => Email => Boolean = sizeConstraint(le)
 
 Теперь мы можем определеить точно такие же предикаты, что и в случае частичного применения:
 
-~~~
+~~~scala
 val min20: Email => Boolean = minSize(20)
 val max20: Email => Boolean = maxSize(20)
 ~~~
@@ -186,7 +186,7 @@ val max20: Email => Boolean = maxSize(20)
 В этом случае мы сразу подставляем значение в только что полученную функцию,
 и пропускаем шаг присваивания к промежуточной переменной:
 
-~~~
+~~~scala
 val min20: Email => Boolean = sizeConstraintFn(ge)(20)
 val max20: Email => Boolean = sizeConstraintFn(le)(20)
 ~~~
@@ -203,7 +203,7 @@ val max20: Email => Boolean = sizeConstraintFn(le)(20)
 для исходной функции. Так если у нас есть функция `sum`, принимающая два аргумента, мы можем получить
 каррированную версию функции просто вызвав метод `curried`:
 
-~~~
+~~~scala
 val sum: (Int, Int) => Int = _ + _
 val sumCurried: Int => Int => Int = sum.curried
 ~~~
@@ -232,7 +232,7 @@ val sumCurried: Int => Int => Int = sum.curried
 
 Посмотрим как это делается на следующем примере:
 
-~~~
+~~~scala
 case class User(name: String)
 
 trait EmailRepository {
@@ -263,7 +263,7 @@ trait MailboxService {
 первых двух аргументов метода `getNewMails` с конкретной реализацией
 зависимостей для `EmailRepository` и `FilterRepository`:
 
-~~~
+~~~scala
 object MockEmailRepository extends EmailRepository {
   def getMails(user: User, unread: Boolean): Seq[Email] = Nil
 }

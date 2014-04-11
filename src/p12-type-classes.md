@@ -34,7 +34,7 @@
 Мы начнём с очень грубой реализации поиска медианы, квартилей и межквартильный интервал для
 чисел типа `Double`:
 
-~~~
+~~~scala
 object Statistics {
   def median(xs: Vector[Double]): Double = xs(xs.size / 2)
 
@@ -64,7 +64,7 @@ object Statistics {
 Если бы `Int` и `Double` наследовали от одного общего класса вроде `Number`! Тогда мы могли
 бы написать наши методы в более общем виде:
 
-~~~
+~~~scala
 object Statistics {
   def median(xs: Vector[Number]): Number = ???
   def quartiles(xs: Vector[Number]): (Number, Number, Number) = ???
@@ -83,7 +83,7 @@ object Statistics {
 расширением к новому типу, так мы сможем заставить его вести себя как `Number`. Разработчики Java, знакомые
 с шаблонами проектирования, могут предложить воспользоваться шаблоном адаптор:
 
-~~~
+~~~scala
 object Statistics {
   trait NumberLike[A] {
     def get: A
@@ -145,7 +145,7 @@ object Statistics {
 Создание класса типов в Scala происходит в несколько шагов. Во первых, давайте определим
 трэйт. Он и будет нашим классом типов:
 
-~~~
+~~~scala
 object Math {
   trait NumberLike[T] {
     def plus(x: T, y: T): T
@@ -167,7 +167,7 @@ object Math {
 нашему классу типов. Скоро мы узнаем почему хорошо так делать. Но сначала давайте сделаем это, давайте сделаем
 `Double` и `Int` членами класса типов `NumberLike`:
 
-~~~
+~~~scala
 object Math {
   trait NumberLike[T] {
     def plus(x: T, y: T): T
@@ -206,7 +206,7 @@ object Math {
 Теперь, когда у нас есть класс типов и две реализации, мы бы хотели воспользоваться этим в определении
 методов для вычисления статистический показателей. Пока давайте сконцентрируемся на методе `mean`:
 
-~~~
+~~~scala
 object Statistics {
   import Math.NumberLike
   def mean[T](xs: Vector[T])(implicit ev: NumberLike[T]): T =
@@ -232,7 +232,7 @@ object Statistics {
 
 Давайте убедимся в том, что неявно определённые значения по умолчанию могут быть надены компилятором:
 
-~~~
+~~~scala
 val numbers = Vector[Double](13, 23.0, 42, 45, 61, 73, 96, 100, 199, 420, 900, 3839)
 println(Statistics.mean(numbers))
 ~~~
@@ -242,7 +242,7 @@ println(Statistics.mean(numbers))
 Если такое сообщение об ошибке нас не устраивает, мы можем  задать определить особствееные
 сообщения для ошибок этого типа. Для этого воспользуемся аннотацией `@implicitNotFound`:
 
-~~~
+~~~scala
 object Math {
   import annotation.implicitNotFound
   @implicitNotFound("No member of type class NumberLike in scope for ${T}")
@@ -260,7 +260,7 @@ object Math {
 у нас есть лишь один тип-параметр. В Scala есть специальный синтаксис, называемый ограничением контекста
 (context bounds). Посмотрим как это делается на примере оставшихся статистических методов:
 
-~~~
+~~~scala
 object Statistics {
   import Math.NumberLike
 
@@ -292,7 +292,7 @@ object Statistics {
 воспользоваться статистическими методами на типе интервалов времени из библиотеки Joda Time.
 Разумеется, для начала нам нужно добавить библиотеку Joda Time в classpath:
 
-~~~
+~~~scala
 libraryDependencies += "joda-time" % "joda-time" % "2.1"
 
 libraryDependencies += "org.joda" % "joda-convert" % "1.3"
@@ -301,7 +301,7 @@ libraryDependencies += "org.joda" % "joda-convert" % "1.3"
 Теперь нам просто нужно определить неявно заданную реализацию `NumberLike` (пожалуйста, 
 убедитесь в том, что Joda Time доступно в вашем classpath при запуске этого примера):
 
-~~~
+~~~scala
 object JodaImplicits {
   import Math.NumberLike
   import org.joda.time.Duration
@@ -317,7 +317,7 @@ object JodaImplicits {
 Если мы импортируем пакет с объектом, который содержит эту реализацию `NumberLike`, то
 мы сможем вычислять среднее значение на коллекции временных интервалов:
 
-~~~
+~~~scala
 import Statistics._
 import JodaImplicits._
 import org.joda.time.Duration._

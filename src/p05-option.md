@@ -53,13 +53,13 @@
 
 Мы можем создать значение типа `Option[A]` для простого значения, обернув его в конструктор `Some`:
 
-~~~
+~~~scala
 val greeting: Option[String] = Some("Hello world")
 ~~~
 
 Или если мы знаем, что значение неопределено, мы можем присвоить результату объект `None`:
 
-~~~
+~~~scala
 val greeting: Option[String] = None
 ~~~
 
@@ -67,7 +67,7 @@ val greeting: Option[String] = None
 на других JVM-языках. Спеуиально для этого случая в объекте-компаньоне `Option` определён конструктор,
 который обратит нулевое значение в `None` и все остальные значения заверёт в конструктор `Some`. 
 
-~~~
+~~~scala
 val absentGreeting: Option[String] = Option(null) // absentGreeting will be None
 val presentGreeting: Option[String] = Option("Hello!") // presentGreeting will be Some("Hello!")
 ~~~
@@ -85,7 +85,7 @@ val presentGreeting: Option[String] = Option("Hello!") // presentGreeting will b
 идентификаторами. Самое время для того, чтобы воспользоваться типом `Option[User]` для
 нашего метода поиска. Черновой набросок для базы пользователей может выглядеть примерно так:
 
-~~~
+~~~scala
 case class User(
   id: Int,
   firstName: String,
@@ -106,7 +106,7 @@ object UserRepository {
 Один из вариантов, воспользоваться методом `isDefined`, что проверяет опредеелно ли наше значение,
 и если оно определено извлечь его с помощью метода `get`:
 
-~~~
+~~~scala
 val user1 = UserRepository.findById(1)
 if (user1.isDefined) {
   println(user1.get.firstName)
@@ -125,7 +125,7 @@ if (user1.isDefined) {
 Часто у нас есть запасной вариант, на случай если значение не определено. Как раз для
 этого и существует метод `getOrElse`:
 
-~~~
+~~~scala
 val user = User(2, "Johanna", "Doe", 30, None)
 println("Gender: " + user.gender.getOrElse("not specified")) // will print "not specified"
 ~~~
@@ -143,7 +143,7 @@ println("Gender: " + user.gender.getOrElse("not specified")) // will print "not 
 или в любом другом месте, где могут встретиться образцы. Давайте перепишем наш пример с помощью
 сопоставления с образцом: 
 
-~~~
+~~~scala
 val user = User(2, "Johanna", "Doe", 30, None)
 user.gender match {
   case Some(gender) => println("Gender: " + gender)
@@ -154,7 +154,7 @@ user.gender match {
 Вспомнив о том, что сопоставление с образцом -- это выражение, которое возвращает результат, 
 мы можем избавиться от дублирования метода `println`:
 
-~~~
+~~~scala
 val user = User(2, "Johanna", "Doe", 30, None)
 val gender = user.gender match {
   case Some(gender) => gender
@@ -194,7 +194,7 @@ println("Gender: " + gender)
 Если нам нужно выполнить какое-то действие только в том случае, если значение определено,
 мы можем воспользоваться знакомым методом для коллекций `foreach`:
 
-~~~
+~~~scala
 UserRepository.findById(2).foreach(user => println(user.firstName)) // напечатает "Johanna"
 ~~~
 
@@ -218,7 +218,7 @@ UserRepository.findById(2).foreach(user => println(user.firstName)) // напе�
 
 Давайте узнаем возраст пользователя:
 
-~~~
+~~~scala
 val age = UserRepository.findById(1).map(_.age) // возраст равен Some(32)
 ~~~
 
@@ -227,7 +227,7 @@ flatMap и неопределённые значения
 
 Давайте проделаем то же самое для пола:
 
-~~~
+~~~scala
 val gender = UserRepository.findById(1).map(_.gender) // пол равен Option[Option[String]]
 ~~~
 
@@ -239,7 +239,7 @@ val gender = UserRepository.findById(1).map(_.gender) // пол равен Optio
 Но помешает ли нам вся эта вложенность? Ничуть. Как и в коллекциях у нас есть метод `flatMap`,
 также как мы бы преобразовали `List[List[A]]` в 'List[B]' мы можем преобразовать и `Option[Option[A]]`:
 
-~~~
+~~~scala
 val gender1 = UserRepository.findById(1).flatMap(_.gender) // пол равен Some("male")
 val gender2 = UserRepository.findById(2).flatMap(_.gender) // пол равен None
 val gender3 = UserRepository.findById(3).flatMap(_.gender) // пол равен None
@@ -253,7 +253,7 @@ val gender3 = UserRepository.findById(3).flatMap(_.gender) // пол равен 
 преобразуем с помощью `flatMap` список списков строк. Вспомните о том, что `Option` 
 это такая же коллекция как список. 
 
-~~~
+~~~scala
 val names: List[List[String]] =
   List(List("John", "Johanna", "Daniel"), List(), List("Doe", "Westheide"))
 names.map(_.map(_.toUpperCase))
@@ -268,7 +268,7 @@ names.flatMap(_.map(_.toUpperCase))
 Но вернёмся к типу `Option`. Посмотрите, что произойдёт если мы отобразим
 список частично определённых строк:
 
-~~~
+~~~scala
 val names: List[Option[String]] = List(Some("Johanna"), None, Some("Daniel"))
 names.map(_.map(_.toUpperCase)) // List(Some("JOHANNA"), None, Some("DANIEL"))
 names.flatMap(xs => xs.map(_.toUpperCase)) // List("JOHANNA", "DANIEL")
@@ -289,7 +289,7 @@ names.flatMap(xs => xs.map(_.toUpperCase)) // List("JOHANNA", "DANIEL")
 Если значение содержит `None` или предикат возвращает ложь на `Some[A]`, всё 
 выражение вернёт `None`.
 
-~~~
+~~~scala
 UserRepository.findById(1).filter(_.age > 30) // None, поскольку age <= 30
 UserRepository.findById(2).filter(_.age > 30) // Some(user), поскольку age > 30
 UserRepository.findById(3).filter(_.age > 30) // None, поскольку опользователь не определён
@@ -308,7 +308,7 @@ For-генераторы
 Например, для того чтобы узнать пол для данного пользователя мы можем воспользоваться
 следующим `for`-генераторм:
 
-~~~
+~~~scala
 for {
   user <- UserRepository.findById(1)
   gender <- user.gender
@@ -323,7 +323,7 @@ for {
 Если мы хотим узнать пол для всех пользователей, мы можем пробежаться по всем пользователям и 
 извлечь пол если он определён:
 
-~~~
+~~~scala
 for {
   user <- UserRepository.findAll
   gender <- user.gender
@@ -342,7 +342,7 @@ for {
 
 Мы можем переписать предыдущий пример так:
 
-~~~
+~~~scala
 for {
   User(_, _, _, _, Some(gender)) <- UserRepository.findAll
 } yield gender
@@ -363,7 +363,7 @@ for {
 нескольких источников. В нашем примере мы пытаемся извлечь данные из файла 
 инифиализации настроек. Также мы вызываем `orElse`, указав альтернативный источник:
 
-~~~
+~~~scala
 case class Resource(content: String)
 val resourceFromConfigDir: Option[Resource] = None
 val resourceFromClasspath: Option[Resource] = Some(Resource("I was found on the classpath"))

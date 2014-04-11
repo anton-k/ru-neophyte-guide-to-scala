@@ -29,7 +29,7 @@ Part 9: Promise и Future на практике
 Если мы присмотримся к типу значение, которое возвращается из метода `apply`
 для объекта `Future`, мы сможем заметить, что он также возвращает `Promise`:
 
-~~~
+~~~scala
 import concurrent.Future
 import concurrent.ExecutionContext.Implicits.global
 val f: Future[String] = Future { "Hello world!" }
@@ -55,7 +55,7 @@ val f: Future[String] = Future { "Hello world!" }
 представить это с помощью значения типа `Promise[TaxCut]`, которое можно создать 
 с помощью метода `apply` для объекта `Promise`:
 
-~~~
+~~~scala
 import concurrent.Promise
 
 case class TaxCut(reduction: Int)
@@ -70,7 +70,7 @@ val taxcut2: Promise[TaxCut] = Promise()
 Как только было создано значение типа `Promise` мы можем получить связанное
 с ним значение типа `Future` вызовом метода `future` на исходном значении:
 
-~~~
+~~~scala
 val taxcutF: Future[TaxCut] = taxcut.future
 ~~~
 
@@ -92,7 +92,7 @@ val taxcutF: Future[TaxCut] = taxcut.future
 Для того чтобы сдержать обещание мы вызываем метод `success` на значении `Promise`, передав ему 
 итоговое значение: 
 
-~~~
+~~~scala
 taxcut.success(TaxCut(20))
 ~~~
 
@@ -108,7 +108,7 @@ taxcut.success(TaxCut(20))
 
 Посмотрим как это происходит на примере:
 
-~~~
+~~~scala
 object Government {
   def redeemCampaignPledge(): Future[TaxCut] = {
     val p = Promise[TaxCut]()
@@ -132,7 +132,7 @@ object Government {
 Давайт е вернёмся к нашей выборной компании и добавим функцию обратного вызова к `Future`
 с помощью метода `onComplete`:
 
-~~~
+~~~scala
 import scala.util.{Success, Failure}
 val taxCutF: Future[TaxCut] = Government.redeemCampaignPledge()
   println("Now that they're elected, let's see if they remember their promises...")
@@ -153,7 +153,7 @@ val taxCutF: Future[TaxCut] = Government.redeemCampaignPledge()
 иногда, у нас просто нет другого выбора. Если это случилось мы можем завершить `Promise`
 вызовом метода `failure` с некоторым исключением:
 
-~~~
+~~~scala
 case class LameExcuse(msg: String) extends Exception(msg)
 
 object Government {
@@ -221,7 +221,7 @@ Netty. Такие бибилиотеки также могут обрабаты�
 это приведёт к тому что вызов будет сделан в потоке веб-сервера. Для избежания этого
 заключите блок кода для общения с базой в Future::
 
-~~~
+~~~scala
 // вернёт Future[ResultSet] или что-то вроде того:
 Future {
   queryDB(query)
@@ -236,7 +236,7 @@ Future {
 настроить наш контекст выполнения специально для базы данных, он не будет зависеть от остального
 приложения:
 
-~~~
+~~~scala
 import java.util.concurrent.Executors
 import concurrent.ExecutionContext
 
@@ -250,7 +250,7 @@ val executionContext = ExecutionContext.fromExecutorService(executorService)
 с вводом-выводом, которая вычисляется очень долго. Она требует много ресурсов CPU. Не стоит выполнять 
 такие задачи в потоке  веб сервера. Для этого необходимо обернуть её в `Future`:
 
-~~~
+~~~scala
 Future {
   longRunningComputation(data, moreData)
 }

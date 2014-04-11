@@ -21,7 +21,7 @@ Part 3: Образцы повсюду
 
 Приведём простой пример с двумя альтернативами и одним охранным выражением:
 
-~~~
+~~~scala
 case class Player(name: String, score: Int)
 
 def printMessage(player: Player) = player match {
@@ -39,7 +39,7 @@ def printMessage(player: Player) = player match {
 Воспользовавшись этим, мы можем разделить две части нашего кода, отвечающие за разные задачи.
 Это облегчит тестирование. Перепишем этот пример следующим образом:
 
-~~~
+~~~scala
 def message(player: Player) = player match {
   case Player(_, score) if score > 100000 => "Get a job, dude!"
   case Player(name, _) => "Hey " + name + ", nice to see you again!"
@@ -61,13 +61,13 @@ def printMessage(player: Player) = println(message(player))
 текущего игрока. Мы воспользуемся определением-заглушкой, которое всегда возвращает
 некоторое значение в качестве игрока:
 
-~~~
+~~~scala
 def currentPlayer(): Player = Player("Daniel", 3500)
 ~~~
 
 Обычно мы определяем значение так:
 
-~~~
+~~~scala
 val player = currentPlayer()
 doSomethingWithTheName(player.name)
 ~~~
@@ -76,7 +76,7 @@ doSomethingWithTheName(player.name)
 Так мы можем использовать люой образец слева от определения переменной. В Scala эта возможность также доступна.
 Так мы можем одновременно определить нового игрока и извлечь необходимые данные:
 
-~~~
+~~~scala
 val Player(name, _) = currentPlayer()
 doSomethingWithTheName(name)
 ~~~
@@ -86,7 +86,7 @@ doSomethingWithTheName(name)
 К примеру следующий код таит угрозу. Метод `scores` возвращает список результатов. 
 В нашем примере метод просто возвращает пустой список для иллюстрации проблемы:
 
-~~~
+~~~scala
 def scores: List[Int] = List()
 val best :: rest = scores
 println("The score of our champion is " + best)
@@ -99,13 +99,13 @@ println("The score of our champion is " + best)
 Предположим у нас есть функция, возвращающая пару из имени игрока и его результата в игре,
 без класса `Player`, которым мы пользовались до этого:
 
-~~~
+~~~scala
 def gameResult(): (String, Int) = ("Daniel", 3500)
 ~~~
 
 Доступ к полям кортежа кажется очень неуклюжим:
 
-~~~
+~~~scala
 val result = gameResult()
 println(result._1 + ": " + result._2)
 ~~~
@@ -113,7 +113,7 @@ println(result._1 + ": " + result._2)
 Извлечение данных из кортежа при определении значения надёжно, поскольку мы знаем, что 
 значение имеет тип `Tuple2`:
 
-~~~
+~~~scala
 val (name, score) = gameResult()
 println(name + ": " + score)
 ~~~
@@ -130,7 +130,7 @@ println(name + ": " + score)
 а в нашей игре это просто игроки, набравшие очков больше чем некоторый заданный порог.
 С помощью `for`-генераторов мы можем сделать это в очень наглядном виде:
 
-~~~
+~~~scala
 def gameResults(): Seq[(String, Int)] =
   ("Daniel", 3500) :: ("Melissa", 13000) :: ("John", 7000) :: Nil
 
@@ -147,7 +147,7 @@ def hallOfFame = for {
 Мы можем улучшить это выражение, ведь в `for`-генераторах правая часть генератора также
 является образцом. Поэтому мы можем избавиться от промежуточной переменной `result`:
 
-~~~
+~~~scala
 def hallOfFame = for {
   (name, score) <- gameResults()
   if (score > 5000)
@@ -166,7 +166,7 @@ def hallOfFame = for {
 всех не пустых списков. Для этого нам необходимо отфильтровать все пустые списки
 и вернуть размеры всех тех, что останутся. Вот решение:
 
-~~~
+~~~scala
 val lists = List(1, 2, 3) :: List.empty :: List(5, 3) :: Nil
 
 for {

@@ -76,7 +76,7 @@
 Для того чтобы код примеров запускался сначала добавьте следующие зависимости в SBT-проект
 с компилятором Scala 2.10:
 
-~~~
+~~~scala
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.3"
@@ -85,7 +85,7 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.2.3"
 Теперь давайте создадим систему акторов `ActorSystem`. Она будет выступать в роли 
 среды обитания для наших акторов:
 
-~~~
+~~~scala
 import akka.actor.ActorSystem
 
 object Barista extends App {
@@ -111,7 +111,7 @@ object Barista extends App {
 Для иллюстрации давайте создадим очень простой актор. Бармен может принимать заказы, 
 но пока он ничего не будет делать, только выводить сообщения напечать:
 
-~~~
+~~~scala
 sealed trait CoffeeRequest
 case object CappuccinoRequest extends CoffeeRequest
 case object EspressoRequest extends CoffeeRequest
@@ -209,7 +209,7 @@ class Barista extends Actor {
 бармена? Для этого нам нужно создать новое значение для актора `Barista`. Возможно Вам захочется
 сделать это так:
 
-~~~
+~~~scala
 val barista = new Barista // приведёт к исключению
 ~~~
 
@@ -217,7 +217,7 @@ val barista = new Barista // приведёт к исключению
 Суть в том, что для успешной работы акторов, они должны управляться системой `ActorSystem`
 и её сервисами. Поэтому нам нужно создать новый актор через систему акторов:
 
-~~~
+~~~scala
 import akka.actor.{ActorRef, Props}
 
 val barista: ActorRef = system.actorOf(Props[Barista], "Barista")
@@ -248,7 +248,7 @@ val barista: ActorRef = system.actorOf(Props[Barista], "Barista")
 Теперь когда мы научились создавать акторы и получили ссылку, которая указывает на актор
 бармена, мы можем отправить ему сообщение. Это делается вызовом метода `!` на ссылке:
 
-~~~
+~~~scala
 barista ! CappuccinoRequest
 barista ! EspressoRequest
 println("I ordered a cappuccino and an espresso")
@@ -263,7 +263,7 @@ println("I ordered a cappuccino and an espresso")
 В силу асинхронности вызовов, результат этого примера непредсказуем. Он может 
 выглядеть так:
 
-~~~
+~~~scala
 I have to prepare a cappuccino!
 I ordered a cappuccino and an espresso
 Let's prepare an espresso.
@@ -284,7 +284,7 @@ Let's prepare an espresso.
 Но как он узнает о том кто отправил сообщение? Ответ кроется во втором неявно передаваемом 
 параметре метода `!`:
 
-~~~
+~~~scala
 def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit
 ~~~
 
@@ -293,7 +293,7 @@ def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit
 Давайте изменим нашего бармена. Теперь он будет мгновенно отправлять посетителю счёт перед тем
 как напечатать привычный ответ:
 
-~~~
+~~~scala
 case class Bill(cents: Int)
 case object ClosingTime
 
@@ -315,7 +315,7 @@ class Barista extends Actor {
 
 Теперь давайте определим второй актор представляющий покупателя:
 
-~~~
+~~~scala
 case object CaffeineWithdrawalWarning
 
 class Customer(caffeineSource: ActorRef) extends Actor {
@@ -334,7 +334,7 @@ class Customer(caffeineSource: ActorRef) extends Actor {
 Наконеци нам нужно создать эти два актора и отправить посетителю `CaffeineWithdrawalWarning`,
 чтобы запустить процесс:
 
-~~~
+~~~scala
 val barista = system.actorOf(Props[Barista], "Barista")
 val customer = system.actorOf(Props(classOf[Customer], barista), "Customer")
 customer ! CaffeineWithdrawalWarning
@@ -349,7 +349,7 @@ barista ! ClosingTime
 бармену, который в свою очередь среагирует отправкой счёта посетителю. Вывод программы может 
 выглядеть так:
 
-~~~
+~~~scala
 Let's prepare an espresso.
 I have to pay 200 cents, or else!
 ~~~
@@ -368,7 +368,7 @@ I have to pay 200 cents, or else!
 Специально для таких случаев предусмотрен метод `?`. Это мост между параллельными вычислениями,
 основанными на акторах и на `Future`. Код пользователя будет выглядеть так:
 
-~~~
+~~~scala
 import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
@@ -414,7 +414,7 @@ f.onSuccess {
 Для примера, давайте введм состояние в наш актор для бармена. Мы будем считать число 
 заказов:
 
-~~~
+~~~scala
 class Barista extends Actor {
   var cappuccinoCount = 0
   var espressoCount = 0

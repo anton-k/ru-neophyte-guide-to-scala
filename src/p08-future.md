@@ -29,7 +29,7 @@ Scala, очень сильно упрощают задачу построени�
 
 Если перевести в Scala, мы получим следующее:
 
-~~~
+~~~scala
 import scala.util.Try
 
 // Определим осмысленные синонимы: 
@@ -119,7 +119,7 @@ def prepareCappuccino(): Try[Cappuccino] = for {
 Во первых, нам нужно переписать все функции для отдельных шагов так, чтобы они
 сразу возвращали результат в виде `Future`, а не блокировали бы вычисления.
 
-~~~
+~~~scala
 import scala.concurrent.future
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -161,7 +161,7 @@ def brew(coffee: GroundCoffee, heatedWater: Water): Future[Espresso] = Future {
 Во первых, в объекте-компаньоне для `Future` определён метод `apply`,
 он принимает два аргумента:
 
-~~~
+~~~scala
 object Future {
   def apply[T](body: => T)(implicit execctx: ExecutionContext): Future[T]
 }
@@ -198,7 +198,7 @@ object Future {
 успешно. Функция принимает значение, которое должно когда-нибудь вернуть `Future`:
  receives the computed value as its input:
 
-~~~
+~~~scala
 grind("arabica beans").onSuccess { case ground =>
   println("okay, got my ground coffee")
 }
@@ -211,7 +211,7 @@ grind("arabica beans").onSuccess { case ground =>
 Обычно, лучше всего одновременно объявить действия для того и другого случая. 
 Тогда общая функция будет принимать значение типа `Try`:
 
-~~~
+~~~scala
 import scala.util.{Success, Failure}
 grind("baked beans").onComplete {
   case Success(ground) => println(s"got my $ground")
@@ -243,7 +243,7 @@ grind("baked beans").onComplete {
 Scala даёт вам такую возможность! Предположим, что когда закипит вода, мы хотим
 проверить температуру. Мы можем сделать это преобразовав `Future[Water]` в `Future[Boolean]`:
 
-~~~
+~~~scala
 val temperatureOkay: Future[Boolean] = heatWater(Water(25)).map { water =>
   println("Мы в будущем!")
   (80 to 85).contains(water.temperature)
@@ -270,7 +270,7 @@ val temperatureOkay: Future[Boolean] = heatWater(Water(25)).map { water =>
 поэтому проверка температуры должна происходить асинхронно. У нас есть функция,
 что принимает воду (`Water`) и возвращает `Future[Boolean]`:
 
-~~~
+~~~scala
 def temperatureOkay(water: Water): Future[Boolean] = Future {
   (80 to 85).contains(water.temperature)
 }
@@ -279,7 +279,7 @@ def temperatureOkay(water: Water): Future[Boolean] = Future {
 Теперь вместо `map` для проверки воды после кипения мы воспользуемся методом `flatMap`,
 так мы получим `Future[Boolean]`, а не `Future[Future[Boolean]]`:
 
-~~~
+~~~scala
 val nestedFuture: Future[Future[Boolean]] = heatWater(Water(25)).map {
   water => temperatureOkay(water)
 }
@@ -296,7 +296,7 @@ val flatFuture: Future[Boolean] = heatWater(Water(25)).flatMap {
 Зачастую вызов `flatMap` можно заменить более простым выражением с `for`-генераторами.
 Код станет гораздо более наглядным. Перепишем наш пример:
 
-~~~
+~~~scala
 val acceptable: Future[Boolean] = for {
   heatedWater <- heatWater(Water(25))
   okay <- temperatureOkay(heatedWater)
@@ -307,7 +307,7 @@ val acceptable: Future[Boolean] = for {
 соответствующие им `Future` создавались за пределами `for`-генратора. 
 Так следующее выражение будет выполняться последовательно:
 
-~~~
+~~~scala
 def prepareCappuccinoSequentially(): Future[Cappuccino] = {
   for {
     ground <- grind("arabica beans")
@@ -326,7 +326,7 @@ def prepareCappuccinoSequentially(): Future[Cappuccino] = {
 Поэтому не забывайте о том, что необходимо создавать независимые `Future`
 за пределами `for`-генератора:
 
-~~~
+~~~scala
 def prepareCappuccino(): Future[Cappuccino] = {
   val groundCoffee = grind("arabica beans")
   val heatedWater = heatWater(Water(20))
