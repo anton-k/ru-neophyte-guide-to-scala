@@ -203,7 +203,8 @@ object Math {
 
 ### Применение классов типов
 
-Now that we have our type class and two default implementations for common types, we want to code against this type class in our statistics module. Let’s focus on the mean method for now:
+Теперь, когда у нас есть класс типов и две реализации, мы бы хотели воспользоваться этим в определении
+методов для вычисления статистический показателей. Пока давайте сконцентрируемся на методе `mean`:
 
 ~~~
 object Statistics {
@@ -213,20 +214,33 @@ object Statistics {
 }
 ~~~
 
-This may look a little intimidating at first, but it’s actually quite simple. Our method takes a type parameter T and a single parameter of type Vector[T].
+Это определение не такое страшное, каким кажется на первый взгляд. Наш метод
+параметризован типом `T`. Он принимает один аргумент типа `Vector[T]`.
 
-The idea to constrain a parameter to types that are members of a specific type class is realized by means of the implicit second parameter list. What does this mean? Basically, that a value of type NumberLike[T] must be implicitly available in the current scope. This is the case if an implicit value has been declared and made available in the current scope, very often by importing the package or object in which that implicit value is defined.
+Основная идея заключается в том, чтобы ограничить тип парметр специфическим классом
+с помощью второго неявного списка аргументов. Что это означает? Второй параметр говорит о том,
+что где-то в текущей области видимости имён должно быть объявлено значение типа `NumberLike[T]`.
+Очень часто такие значения предоставляются импортированием объекта, в котором они объявлены 
+с ключевым словом `implicit`.
 
-If and only if no other implicit value can be found, the compiler will look in the companion object of the type of the implicit parameter. Hence, as a library designer, putting your default type class implementations in the companion object of your type class trait means that users of your library can easily override these implementations with their own ones, which is exactly what you want. Users can also pass in an explicit value for an implicit parameter to override the implicit values that are in scope.
+В том и только  в том случае если компилятору не удалось найти имплицинтого значения,
+он попробует найти его в объекте-компаньоне для класса неявного аргкмента. 
+Это стоит учитывать при создании библиотек, так мы можем предоставить возможность
+пользователям нашей библиотеки легко переопределять наши определения пользовательскими.
+Что нам и требовалось изначально. Также пользователи могут передать значение в явном виде
+для того, чтобы переопределить поведение по умолчанию.
 
-Let’s see if the default type class implementations can be resolved:
+Давайте убедимся в том, что неявно определённые значения по умолчанию могут быть надены компилятором:
 
 ~~~
 val numbers = Vector[Double](13, 23.0, 42, 45, 61, 73, 96, 100, 199, 420, 900, 3839)
 println(Statistics.mean(numbers))
 ~~~
 
-Wonderful! If we try this with a Vector[String], we get an error at compile time, stating that no implicit value could be found for parameter ev: NumberLike[String]. If you don’t like this error message, you can customize it by annotating your type class trait with the @implicitNotFound annotation:
+Чудесно! Если мы попробуем вызвать функцию с `Vector[String]`, то мы получим ошибку на этапе компиляции,
+которая укажет на то, что неявное значение не может быть найдено для `NumberLike[String]`.
+Если такое сообщение об ошибке нас не устраивает, мы можем  задать определить особствееные
+сообщения для ошибок этого типа. Для этого воспользуемся аннотацией `@implicitNotFound`:
 
 ~~~
 object Math {
@@ -240,18 +254,24 @@ object Math {
 }
 ~~~
 
-#### Context bounds
+#### Ограничение контекста
 
-A second, implicit parameter list on all methods that expect a member of a type class can be a little verbose. As a shortcut for implicit parameters with only one type parameter, Scala provides so-called context bounds. To show how those are used, we are going to implement our other statistics methods using those instead:
+Второй список аргументов с неявными аргументами можно переписать в болеее коротком виде, если
+у нас есть лишь один тип-параметр. В Scala есть специальный синтаксис, называемый ограничением контекста
+(context bounds). Посмотрим как это делается на примере оставшихся статистических методов:
 
 ~~~
 object Statistics {
   import Math.NumberLike
+
   def mean[T](xs: Vector[T])(implicit ev: NumberLike[T]): T =
     ev.divide(xs.reduce(ev.plus(_, _)), xs.size)
+
   def median[T : NumberLike](xs: Vector[T]): T = xs(xs.size / 2)
+
   def quartiles[T: NumberLike](xs: Vector[T]): (T, T, T) =
     (xs(xs.size / 4), median(xs), xs(xs.size / 4 * 3))
+
   def iqr[T: NumberLike](xs: Vector[T]): T = quartiles(xs) match {
     case (lowerQuartile, _, upperQuartile) =>
       implicitly[NumberLike[T]].minus(upperQuartile, lowerQuartile)
@@ -259,11 +279,18 @@ object Statistics {
 }
 ~~~
 
-A context bound T : NumberLike means that an implicit value of type NumberLike[T] must be available, and so is really equivalent to having a second implicit parameter list with a NumberLike[T] in it. If you want to access that implicitly available value, however, you need to call the implicitly method, as we do in the iqr method. If your type class requires more than one type parameter, you cannot use the context bound syntax.
+Ограничение контекста `T : NumberLike` означает, что должно быть определено
+неявное значение типа `NumberLike[T]`. Эта запись эквивалентна указанию второго
+списка аргументов с неявным параметром. Для того, чтобы получить доступ к этому параметру,
+мы можем оспользоваться методом `implicitly`, как в методе `iqr`. Если у нас несколько типов-параметров
+в классе типов, то мы не можем воспользоваться ограничением контекста.
 
-### Custom type class members
+### Пользовательские члены классов типов
 
-As a user of a library that makes use of type classes, you will sooner or later have types that you want to make members of those type classes. For instance, we might want to use the statistics library for instances of the Joda Time Duration type. To do that, we need Joda Time on our classpath, of course:
+Будучи пользователями библиотеки с классами типов, нам рано или поздно захочется 
+определить свой член для уже созданного класса типов. К примеру нам может понадобиться
+воспользоваться статистическими методами на типе интервалов времени из библиотеки Joda Time.
+Разумеется, для начала нам нужно добавить библиотеку Joda Time в classpath:
 
 ~~~
 libraryDependencies += "joda-time" % "joda-time" % "2.1"
@@ -271,12 +298,14 @@ libraryDependencies += "joda-time" % "joda-time" % "2.1"
 libraryDependencies += "org.joda" % "joda-convert" % "1.3"
 ~~~
 
-Now we just have to create an implicitly available implementation of NumberLike (please make sure you have Joda Time on your classpath when trying this out):
+Теперь нам просто нужно определить неявно заданную реализацию `NumberLike` (пожалуйста, 
+убедитесь в том, что Joda Time доступно в вашем classpath при запуске этого примера):
 
 ~~~
 object JodaImplicits {
   import Math.NumberLike
   import org.joda.time.Duration
+
   implicit object NumberLikeDuration extends NumberLike[Duration] {
     def plus(x: Duration, y: Duration): Duration = x.plus(y)
     def divide(x: Duration, y: Int): Duration = Duration.millis(x.getMillis / y)
@@ -285,7 +314,8 @@ object JodaImplicits {
 }
 ~~~
 
-If we import the package or object containing this NumberLike implementation, we can now compute the mean value for a bunch of durations:
+Если мы импортируем пакет с объектом, который содержит эту реализацию `NumberLike`, то
+мы сможем вычислять среднее значение на коллекции временных интервалов:
 
 ~~~
 import Statistics._
@@ -296,29 +326,44 @@ val durations = Vector(standardSeconds(20), standardSeconds(57), standardMinutes
   standardMinutes(17), standardMinutes(30), standardMinutes(58), standardHours(2),
   standardHours(5), standardHours(8), standardHours(17), standardDays(1),
   standardDays(4))
+
 println(mean(durations).getStandardHours)
 ~~~
 
-Use cases
+
+Где применяется
 --------------------------------------
 
-Our NumberLike type class was a nice exercise, but Scala already ships with the Numeric type class, which allows you to call methods like sum or product on collections for whose type T a Numeric[T] is available. Another type class in the standard library that you will use a lot is Ordering, which allows you to provide an implicit ordering for your own types, available to the sort method on Scala’s collections.
+Мы посмотрели на то, как устроены классы типов на примере `NumberLike`, но в стандартной библиотеке уже
+определён класс типов `Numeric[T]`, позволяющий выполнять методы вроде `sum` и `product` на всех типах
+`T` для которых доступны `Numeric[T]`. Также мы часто будем пользоваться ещё одним стандартным классом типов `Ordering`.
+С его помощью происходит сравнение величин на больше-меньше. Мы пользуемся и м в методах вроде `sort`. 
 
-There are more type classes in the standard library, but not all of them are ones you have to deal with on a regular basis as a Scala developer.
+Также в стандартной библиотеке определено много разных классов типов, но на практике они встречаются не так часто.
 
-A very common use case in third-party libraries is that of object serialization and deserialization, most notably to and from JSON. By making your classes members of an appropriate formatter type class, you can customize the way your classes are serialized to JSON, XML or whatever format is currently the new black.
+Примером использования классов типов в сторонних библиотеках, может быть преобразование данных из различных
+протоколов. Особенно стоит отметить JSON. Сделав наш тип членом некоторого класса типов, что отвечает за преобразование,
+мы можем указать на то как значения нашего типа будут сериализовываться в JSON, XML или любой другой 
+новомодный формат.
 
-Mapping between Scala types and ones supported by your database driver is also commonly made customizable and extensible via type classes.
+Часто по такому же принципу организовано и преобразование типов между форматами, принятыми
+в используемой нами базе данных.
 
-Summary
+Итоги
 -------------------------------------------
 
-Once you start to do some serious work with Scala, you will inevitably stumble upon type classes. I hope that after reading this article, you are prepared to take advantage of this powerful technique.
+На практике вы очень быстро столкнётесь с классами типов. Надеюсь, что после прочтения этой 
+статьи, Вы будете готовы к тому, чтобы воспользоваться возможностями, предлагаемыми классами типов,
+на все 100 процентов.
 
-Scala type classes allow you to develop your Scala code in such a way that it’s open for retroactive extension while retaining as much concrete type information as possible. In contrast to approaches from other languages, they give developers full control, as default type class implementations can be overridden without much hassle, and type classes implementations are not made available in the global namespace.
+Классы типов в Scala позволяют проводить последующее расширение класса типов, с максимальным
+сохранением информации об ограничениях, обусловленных типами. В отличае от других языков
+в Scala мы полностью контролируем ситуацию, ведь мы можем без труда переопределить 
+реализацию по умолчанию или определить собственную, если она не доступна.
 
-You will see that this technique is especially useful when writing libraries intended to be used by others, but type classes also have their use in application code to decrease coupling between modules.
-
+Вы убедитесь в том, что эта техника особенно полезна при написании обобщённых библиотек,
+предназначенных для использования в других библиотеках. Но классы типов могут использоваться 
+и в конкретных приложениях для уменьшения связанности модулей в приложении.
 
 ----------------------------------------------------
 
