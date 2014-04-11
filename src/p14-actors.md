@@ -453,7 +453,7 @@ class Barista extends Actor {
 
 ----------------------------------------------------
 
-* <= [Глава 13: Path-dependent types](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p13-path-dep-types.md)
+* <= [Глава 13: Зависимые от пути типы](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p13-path-dep-types.md)
 
 * => [Глава 15: Обработка ошибок в системе акторов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p15-actors-failure.md)
 

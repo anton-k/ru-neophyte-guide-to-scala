@@ -1,36 +1,49 @@
-Part 13: Path-dependent Types
+Глава 13: Зависимые от пути типы
 ==============================================================
 
-In last week’s article, I introduced you to the idea of type classes – a pattern that allows you to design your programs to be open for extension without giving up important information about concrete types. This week, I’m going to stick with Scala’s type system and talk about one of its features that distinguishes it from most other mainstream programming languages: Scala’s form of dependent types, in particular path-dependent types and dependent method types.
+На прошлой неделе мы узнали о классах типов. Этот шаблон проектирования позволяет
+нам писать расширяемые программы без потери важной информации о конкретных типах. 
+В этой статье мы поговорим о возможности языка Scala, которая сильно отличает 
+его от всех популярных языков программирования. В Scala мы можем воспользоваться
+зависимыми типами (dependent type). В частности мы поговорим о типах завсимых от пути
+(path-dependent type). 
 
-One of the most widely used arguments against static typing is that “the compiler is just in the way” and that in the end, it’s all only data, so why care about building up a complex hierarchy of types?
+Чаще всего языки со статической типизацией ругают за то, что "компилятор мешается под ногами",
+и в конце концов всё это все волишь о данных, зачем заморачиваться над построением иерархий типов?
 
-In the end, having static types is all about preventing bugs by allowing the über-smart compiler to humiliate you on a regular basis, making sure you’re doing the right thing before it’s too late.
+Статическая система типизации позволяет нам предотвращать ошибки. Умный компилятор отругает нам, 
+если мы попытаемся сделать что-нибудь глупое, задолго до того, как будет слишком поздно.
 
-Using path-dependent types is one powerful way to help the compiler prevent you from introducing bugs, as it places logic that is usually only available at runtime into types.
+Столкновение с ошиками, которые связаны с типами зависимыми от пути, могут сильно удивить Вас,
+поэтому лучше заранее разобраться с этим понятием.
 
-Sometimes, accidentally introducing path-dependent types can lead to frustation, though, especially if you have never heard of them. Hence, it’s definitely a good idea to get familiar with them, whether you decide to put them to use or not.
-
-The problem
+Проблема
 ----------------------------------------------------
 
-I will start by presenting a problem that path-dependent types can help us solving: In the realm of fan fiction, the most atrocious things happen – usually, the involved characters will end up making out with each other, regardless how inappropriate it is. There is even crossover fan fiction, in which two characters from different franchises are making out with each other.
+Начнём с проблемы, которая может быть решена с помощью типов зависимых от пути. 
+Обратимся к любительским сочинениям на основе научной фантастики. Там рано или поздно персонажи делают самое ужасное --
+нагло целуются, не обращая внимание на время и окружающие обстоятельства. Бывает и 
+такие сюжеты, в которых сходятся персонажи из разных первоисточников. 
 
-However, elitist fan fiction writers look down on this. Surely there is a way to prevent such wrongdoing! Here is a first version of our domain model:
+Но элитарные писатели никогда не допустят такого. Есть способ предотвращения таких ситуаций.
+Рассмотрим первую попытку:
 
 ~~~
 object Franchise {
    case class Character(name: String)
  }
+
 class Franchise(name: String) {
   import Franchise.Character
+
   def createFanFiction(
     lovestruck: Character,
     objectOfDesire: Character): (Character, Character) = (lovestruck, objectOfDesire)
 }
 ~~~
 
-Characters are represented by instances of the Character case class, and the Franchise class has a method to create a new piece of fan fiction about two characters. Let’s create two franchises and some characters:
+Персонажы представлены `case`-классом `Character` и в классе первоисточника `Franchise` есть метод 
+для создания новой истории двух персонажах. Давайте создадим нексколько историй:
 
 ~~~
 val starTrek = new Franchise("Star Trek")
@@ -43,18 +56,22 @@ val luke = Franchise.Character("Luke Skywalker")
 val yoda = Franchise.Character("Yoda")
 ~~~
 
-Unfortunately, at the moment we are unable to prevent bad things from happening:
+К сожалению, пока мы не можем избежать неприятностей:
 
 ~~~
 starTrek.createFanFiction(lovestruck = jadzia, objectOfDesire = luke)
 ~~~
 
-Horrors of horrors! Someone has created a piece of fan fiction in which Jadzia Dax is making out with Luke Skywalker. Preposterous! Clearly, we should not allow this. Your first intuition might be to somehow check at runtime that two characters making out are from the same franchise. For example, we could change the model like so:
+Какой кошмар! Кто-то создал историю, в которой Джадзия Дакс целуется с Люком Скайвокером. 
+Что за нелепость! Мы должны предотвратить это. Первое, что может прийти в голову, так это
+проверить на этапе выполнения, что два персонажа являются персонажами из одного первоисточника. 
+К примеру мы можем изменить модель так:
 
 ~~~
 object Franchise {
   case class Character(name: String, franchise: Franchise)
 }
+
 class Franchise(name: String) {
   import Franchise.Character
   def createFanFiction(
@@ -66,14 +83,21 @@ class Franchise(name: String) {
 }
 ~~~
 
-Now, the Character instances have a reference to their Franchise, and trying to create a fan fiction with characters from different franchises will lead to an IllegalArgumentException (feel free to try this out in a REPL).
+У персонажей появилась ссылка на первоисточник `Franchise` и теперь при
+создании сюжета мы проверяем, что персонажи пришли из одного первоисточника (Вы можете
+легко в этом убдеиться в интерпретаторе).
 
-Safer fiction with path-dependent types
+
+Более надёжный способ проверки с типами зависимыми от путей
 ---------------------------------------------------------------------------
 
-This is pretty good, isn’t it? It’s the kind of fail-fast behaviour we have been indoctrinated with for years. However, with Scala, we can do better. There is a way to fail even faster – not at runtime, but at compile time. To achieve that, we need to encode the connection between a Character and its Franchise at the type level.
+Этот метод не так уж плох, не так ли? Мы уже давно успели привыкнуть к нему. Но в Scala есть
+способ лучше. Мы можем проверить этот условие на этапе компиляции. Для этого нам нужно закодировать
+зависимость `Character` от `Franchise` на уровне типов.
 
-Luckily, the way Scala’s nested types work allow us to do that. In Scala, a nested type is bound to a specific instance of the outer type, not to the outer type itself. This means that if you try to use an instance of the inner type outside of the instance of the enclosing type, you will face a compile error:
+К счастью, мы можем сделать это с помощью вложенныъ типов. В Scala вложенный тип связывается со значением внешнего типа,
+а не с самим типом. Это означает, что если мы попытаемся воспользоваться значением внутреннего
+типа за пределами значения окружающего типа, компилятор сообщит нам об ошибке:
 
 ~~~
 class A {
@@ -88,9 +112,11 @@ a1.b = Some(b1)
 a2.b = Some(b1) // does not compile
 ~~~
 
-You cannot simply assign an instance of the B that is bound to a2 to the field on a1 – the one is an a2.B, the other expects an a1.B. The dot syntax represents the path to the type, going along concrete instances of other types. Hence the name, path-dependent types.
+Мы не можем просто присвоить полю переменной `a1` значение `B`, которое связанное с `a2`. Она
+ожидает значения типа `a1.B`, а мы передаём `a2.B`. Синтаксис вызова через точку представляет 
+собой путь к типу, по конкретному значению. Поэтому такие типы называются зависимыми от пути.
 
-We can put these to use in order to prevent characters from different franchises making out with each other:
+Мы можем воспользоваться этой техникой для решения исходной задачи о целующихся персонажах:
 
 ~~~
 class Franchise(name: String) {
@@ -101,9 +127,10 @@ class Franchise(name: String) {
 }
 ~~~
 
-Now, the type Character is nested in the type Franchise, which means that it is dependent on a specific enclosing instance of the Franchise type.
+Теперь тип `Character` -- вложен в тип `Franchise`. Это означает, что он зависит от специфического
+значения типа `Franchise`.
 
-Let’s create our example franchises and characters again:
+Давайте снова создадим наш пример с сюжетами:
 
 ~~~
 val starTrek = new Franchise("Star Trek")
@@ -116,22 +143,23 @@ val luke = starWars.Character("Luke Skywalker")
 val yoda = starWars.Character("Yoda")
 ~~~
 
-You can already see in how our Character instances are created that their types are bound to a specific franchise. Let’s see what happens if we try to put some of these characters together:
+Из примера видно, что значения `Character` создаются так, что их типы связаны со специфическими
+первоисточниками. Давайте посмотрим, что случится, если мы попытаемся совместить персонажей:
 
 ~~~
 starTrek.createFanFictionWith(lovestruck = quark, objectOfDesire = jadzia)
 starWars.createFanFictionWith(lovestruck = luke, objectOfDesire = yoda)
 ~~~
 
-These two compile, as expected. They are tasteless, but what can we do?
+Эти примеры успешно скомпилируются, без неожиданностей. Безвкусица, конечно, но что поделаешь.
 
-Now, let’s see what happens if we try to create some fan fiction about Jadzia Dax and Luke Skywalker:
+Теперь давайте попробуем состряпать сюжет о Джадзия Дакс и Люке Скайвокере:
 
 ~~~
 starTrek.createFanFictionWith(lovestruck = jadzia, objectOfDesire = luke)
 ~~~
 
-Et voilà: The thing that should not be does not even compile! The compiler complains about a type mismatch:
+Вуаля! Этот пример не компилируется! Компилятор пожалуется на несоответствие типов:
 
 ~~~
 found   : starWars.Character
@@ -140,20 +168,27 @@ required: starTrek.Character
                                                                                    ^
 ~~~
 
-This technique also works if our method is not defined on the Franchise class, but in some other module. In this case, we can make use of dependent method types, where the type of one parameter depends on a previous parameter:
+Эта техника работает, если наш метод определён не в классе `Franchise`, но в каком-нибудь дркгом модуле.
+В этом случае мы можем воспользоваться типами, которые зависят от пути, сославшись на тип, который
+содержится в одном из предыдущих параметров:
 
 ~~~
 def createFanFiction(f: Franchise)(lovestruck: f.Character, objectOfDesire: f.Character) =
   (lovestruck, objectOfDesire)
 ~~~
 
-As you can see, the type of the lovestruck and objectOfDesire parameters depends on the Franchise instance passed to the method. Note that this only works if the instance on which other types depend is in its own parameter list.
+Видно, что тип аргументов `lovestruck` и `objectOfDesire` зависит от значения `Franchise`, 
+которое передаётся в метод первым параметром. Обратите внимание, что это работает только в том
+случае, если значение, которое содержит зависимый тип находится в своём собственном списке аргументов.
 
 
-Abstract type members
+Абстрактные вложенные типы
 ---------------------------------------------------------------
 
-Often, dependent method types are used in conjunction with abstract type members. Suppose we want to develop a hipsterrific key-value store. It will only support setting and getting the value for a key, but in a typesafe manner. Here is our oversimplified implementation:
+Часто зависимые типы используется совместно с абстрактными вложенными типами. Предположим,
+что нам хочется создать хипстерскую базу хранения значений по ключам. Она будет поддерживать
+лишь операции задания значения и чтения значения по ключу. Но делать это безопасно относительно типов.
+Вот наша очень упрощённая реализация: 
 
 ~~~
 object AwesomeDB {
@@ -161,7 +196,9 @@ object AwesomeDB {
     type Value
   }
 }
+
 import AwesomeDB.Key
+
 class AwesomeDB {
   import collection.mutable.Map
   val data = Map.empty[Key, Any]
@@ -170,45 +207,60 @@ class AwesomeDB {
 }
 ~~~
 
-We have defined a class Key with an abstract type member Value. The methods on AwesomeDB refer to that type without ever knowing or caring about the specific manifestation of this abstract type.
+Мы определили класс `Key` с абстрактным типом `Value`. Методы `AwesomeDB` пользуются
+этими типами, совсем не зная о конкретной реализации абстрактного типа.
 
-We can now define some concrete keys that we want to use:
+Теперь мы можемобъявить конкретные ключи:
 
 ~~~
 trait IntValued extends Key {
  type Value = Int
 }
+
 trait StringValued extends Key {
   type Value = String
 }
+
 object Keys {
   val foo = new Key("foo") with IntValued
   val bar = new Key("bar") with StringValued
 }
 ~~~
 
-Now we can set and get key/value pairs in a typesafe manner:
-
+Теперь мы можем устанавливать и читать значения с помощью
+безопасных по типам методов:
 ~~~
 val dataStore = new AwesomeDB
 dataStore.set(Keys.foo)(23)
 val i: Option[Int] = dataStore.get(Keys.foo)
-dataStore.set(Keys.foo)("23") // does not compile
+dataStore.set(Keys.foo)("23") // не компилируется
 ~~~
 
-Path-dependent types in practice
+Типы зависимые от пути на практике
 ----------------------------------------------------------------------------------
 
-While path-dependent types are not necessarily omnipresent in your typical Scala code, they do have a lot of practical value beyond modelling the domain of fan fiction.
+Несмотря на то, что типы зависимые от путей не встречаются на каждом шагу в типичном приложении на Scala,
+они представляют очень важную возможность языка, и находят применение далеко за пределами любительской
+научной фантастики. 
 
-One of the most widespread uses is probably seen in combination with the cake pattern, which is a technique for composing your components and managing their dependencies, relying solely on features of the language. See the excellent articles by Debasish Ghosh and Precog’s Daniel Spiewak to learn more about both the cake pattern and how it can be improved by incorporating path-dependent types.
+Один из самых распространённых случаев применения -- это шаблон пирог (cake pattern), который
+позволяет регулировать зависимости в приложении средствами языка Scala. За подробностями обратитесь к статьям
+[Debasish Ghosh](http://debasishg.blogspot.ie/2013/02/modular-abstractions-in-scala-with.html) и 
+[Precog’s Daniel Spiewak](http://precog.com/blog/Existential-Types-FTW/). Там вы узнаете и о шаблоне пирог и какое участие в нём принимают 
+типы, зависимые от пути.
 
-In general, whenever you want to make sure that objects created or managed by a specific instance of another type cannot accidentally or purposely be interchanged or mixed, path-dependent types are the way to go.
+В общем случае, если нам хочется завериться в том, что объекты, созданные из специфического значения
+некоторого типа, не могут быть взаимозаменяемыми и принадлежат только к тому значению, из которого они
+были созданы, стоит вспомнить о типах зависимыми от пути.
 
-Path-dependent types and dependent method types play a crucial role for attempts to encode information into types that is typically only known at runtime, for instance heterogenous lists, type-level representations of natural numbers and collections that carry their size in their type. Miles Sabin is exploring the limits of Scala’s type system in this respect in his excellent library Shapeless.
+Типы зависимые от пути и вложенные зависимые типы играют ключевую роль в кодировании в типах
+информации которая обычно доступна только на этапе выполнения программы. Примерами могут быть
+гетерогенные списки, кодирование чисел с помощью системы типов и коллекции, которые хранят
+в типе информацию о размере. Майлз Сабин исследует  пределы возможностей системы типов Scala
+в своей замечательной библиотеке [Shapeless](https://github.com/milessabin/shapeless).
 
 
-----------------------------------------------------
+----------------------------------------------------------------------------------
 
 * <= [Глава 12: Классы типов](https://github.com/anton-k/ru-neophyte-guide-to-scala/blob/master/src/p12-type-classes.md)
 
