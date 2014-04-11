@@ -50,7 +50,7 @@
 в язык или вы можете расширять его? И как этот механизм устроен? Есть ли какая то магия, что 
 позволяет нам писать такой код?
 
-~~~
+~~~scala
 case class User(firstName: String, lastName: String, score: Int)
 
 def advance(xs: List[User]) = xs match {
