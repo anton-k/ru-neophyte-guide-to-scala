@@ -99,7 +99,7 @@ val constr30: (IntPairPred, Email) => Boolean = sizeConstraint(_: IntPairPred, 3
 На этом примере видно, что несмотря на многословность, частичное применение
 в Scala всё же немного более общее чем в Clojure, где мы обязаны
 передавать аргументы по-порядку слева направо, но не можем пропустить 
-переметр в середине.
+параметр в середине.
 
 ### От методов к функциональным объектам
 
@@ -286,7 +286,7 @@ object MailboxServiceWithMockDeps extends MailboxService {
 и частичного применения функций на практике. Для подробного изучения этого вопроса я 
 рекомендую вам взглянуть на превосходную презентацию Debasish Ghosh 
 [”Dependency Injection in Scala”](http://de.slideshare.net/debasishg/dependency-injection-in-scala-beyond-the-cake-pattern).
-Я почерпнл эти знания как раз из них.
+Я почерпнул эти знания как раз из них.
 
 Итоги
 ------------------------------------------
