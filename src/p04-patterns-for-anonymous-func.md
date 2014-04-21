@@ -145,7 +145,7 @@ wordFrequencies.map(pf) // will throw a MatchError
 ~~~
 
 Но мы можем передать нашу функцию методу `collect`, что приведёт к одновременной фильтрации и
-пеобразованию последовательности, как и ожидалось:
+преобразованию последовательности, как и ожидалось:
 
 ~~~scala
 wordFrequencies.collect(pf) // List("habitual", "homely", "society")
