@@ -146,7 +146,7 @@ val content = getContent(part5).right.map(a =>
 определён и метод `joinLeft`. 
 
 Однако мы можем не создавать вложенную структуру изначально. Если мы вызовем `flatMap` на `RightProjection`, то
-мы полуим более приятный результат. Это приведёт к тому что, мы избавимся от `Right` во внутреннем `Either`. 
+мы получим более приятный результат. Это приведёт к тому что, мы избавимся от `Right` во внутреннем `Either`. 
 
 ~~~scala
 val content = getContent(part5).right.flatMap(a =>
