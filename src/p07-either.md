@@ -282,7 +282,7 @@ def handling[Ex <: Throwable, T](exType: Class[Ex])(block: => T): Either[Ex, T] 
   catching(exType).either(block).asInstanceOf[Either[Ex, T]]
 ~~~
 
-Нам нужен этот метод из-за того, что несмотря на то, что несмотря на то, что методы, определённые в `scala.util.Exception`,
+Нам нужен этот метод из-за того, что несмотря на то, что методы, определённые в `scala.util.Exception`,
 позволяют нам обрабатывать специфические типы исключений, результирующий на этапе компиляции 
 тип исключения всегда будет `Throwable`.
 
