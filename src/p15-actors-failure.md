@@ -595,7 +595,7 @@ class Register extends Actor with ActorLogging {
 ### Тайм-ауты
 
 Также нам стоит задуматься о тайм-аутах. Если произойдёт тайм-аут в `ReceiptPrinter`, то
-возникнет исключение `AskTimeoutException`. Которое будет дойдёт до актора `Barista` 
+возникнет исключение `AskTimeoutException`, которое дойдёт до актора `Barista` 
 в виде не успешно завершённого `Future`. 
 
 Поскольку актор `Barista`  просто вызывает `map` на этом `Future` (который сработает только если `Future` содержит `Success`) 
