@@ -77,21 +77,20 @@
 получите представление об экосистеме языка, его библиотеках, поймёте в каких ситуациях они
 могут вам пригодиться.
 
-Для поиска подходящих библиотек или обновлений рекомендую подписаться на [http://notes.implicit.ly/](implicit.ly)
-и регулярно просматривать [Scala-проекты на Github](https://github.com/search?q=scala).
+Для поиска подходящих библиотек или обновлений рекомендую [Scaladex](https://index.scala-lang.org/).
 
 ### Кругом один Веб
 
 Сейчас большинство приложений в Scala становятся серверными приложениями, зачастую с REST-интерфейсом
 с HTTP или веб-фронтендом.
 
-Если модель акторов пришлась Вам по душе, а следовательно и билиблиотека [Akka](http://akka.io/), прекрасным
-выбором для создания REST-приложений может стать библиотека [Spray](http://spray.io/). Это прекрасный инструмент,
+Если модель акторов пришлась Вам по душе, а следовательно и билиблиотека [Akka](https://akka.io/), прекрасным
+выбором для создания REST-приложений может стать библиотека [Akka-http](https://akka.io/akka-http/). Это прекрасный инструмент,
 если Вам не нужен веб-фронтенд или Вы планируете создать одностраничное приложение, которое будет общаться
 с сервером с помощью REST API. 
 
 Если Вам нужно что-то менее минималистичное, посмотрите в сторону [Play](http://www.playframework.com/).
-Этот фреймворк является частью [платформы от Typesafe](http://typesafe.com/platform). Она широко распространена
+Этот фреймворк является частью [платформы от Lightbend](https://www.lightbend.com/play-framework). Она широко распространена
 и имеет хорошую поддержку.
 
 ### Жизнь в параллельном мире
@@ -99,9 +98,9 @@
 Если две главы об акторах и Akka убедили Вас в том, чтобы воспользоваться ими в следующем 
 приложении, придётся узнать о них гораздо больше.
 
-Хотя [документация по Akka](http://akka.io/docs/) достаточно подробно и обстоятельно описывает все 
+Хотя [документация по Akka](https://akka.io/docs/) достаточно подробно и обстоятельно описывает все 
 доступные возможности и может служить прекрасным справочником, на мой взгляд, если вы хотите
-понять Akka, места лучшего чем книга Дерека Вайата  [Akka Concurrency](http://www.artima.com/shop/akka_concurrency) Вам
+понять Akka, места лучшего чем книга Дерека Вайата  [Akka Concurrency](https://www.artima.com/shop/akka_concurrency) Вам
 не найти. Доступна PDF-версия для предварительного просмотра. 
 
 После углубления в Akka, Вам стоит подписаться на [Let It Crash](http://letitcrash.com/). 
@@ -140,11 +139,9 @@
 
 Попытайтесь найти клуб любителей Scala в вашей округе. Узнайте когда и где они встречаются. 
 Обзор Scala-сообществ по всему миру можно найти в [Scala Tribes](http://www.scala-tribes.org/).
-Также Вы не пропустите ни одного события в мире Scala, если подпишитесь на [Scala 
-в Larynd](http://lanyrd.com/topics/scala/)
+Стартовая точка входа для поиска комьюнити [Scala](https://scala-lang.org/community/)
 
-Если Вам не нравится общаться вживую, подпишитесь на [почтовую рассылку о Scala в Google](https://groups.google.com/forum/#!forum/scala-user)
-и [Scala канал IRC на Freenode](https://client00.chat.mibbit.com/?url=irc%3A%2F%2Firc.freenode.net%2Fscala) может быть хорошей альтернативой.
+Если Вам не нравится общаться вживую заходите на [Канал общения](https://users.scala-lang.org/)
 
 
 Другие источники
@@ -152,11 +149,11 @@
 
 Кроме того я бы хотел порекомендовать ещё несколько источников:
 
-* [Functional Programming in Scala](http://www.manning.com/bjarnason/) by Paul Chiusano and Rúnar Bjarnason, книга доступна
+* [Functional Programming in Scala](https://www.manning.com/books/functional-programming-in-scala) by Paul Chiusano and Rúnar Bjarnason, книга доступна
   для предварительного просмотра. Она учит функциональной парадигме и о том как решать задачи в рамках функционального подхода.
 
-* [The Scala Documentation Site](http://docs.scala-lang.org/), сайт документации по Scala, на который почему-то нет ссылки из 
-  главного сайта Scala, особенно хочу отметить доступные там [пособия](http://docs.scala-lang.org/overviews/) и 
+* [The Scala Documentation Site](https://docs.scala-lang.org/), сайт документации по Scala, на который почему-то нет ссылки из 
+  главного сайта Scala, особенно хочу отметить доступные там [пособия](https://docs.scala-lang.org/overviews/) и 
   [обучающие статьи](http://docs.scala-lang.org/tutorials/).
     
 * [Resources for Getting Started With Functional Programming and Scala](http://nerd.kelseyinnis.com/blog/2013/01/07/resources-for-getting-started-with-functional-programming-and-scala/) by Kelsey Innis содержит множество ссылок по некоторым вопросам затронутым в настоящем пособии.
