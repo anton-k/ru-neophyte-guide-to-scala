@@ -265,7 +265,7 @@ val content = getURLContent("garbage") recover {
 
 Теперь мы можем спокойно извлечь значение из `Try[Iterator[String]]`. Нам известно,
 что оно определено. Вызов `content.get.foreach(println)` приведёт к печати сообщения
-`Please make sure to enter a valid URL being printed to the console`.
+`Please make sure to enter a valid URL` being printed to the console.
 
 Заключение
 ---------------------------------------------
